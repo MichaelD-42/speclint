@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:speclint:results:1",
+  "title": "speclint results",
+  "description": "Output of `speclint check`, optionally extended by `--classify` and `speclint merge`. Scores are integers 0-100 per requirement; summary scores are means over graded items.",
+  "type": "object",
+  "required": ["tool", "schema_version", "categories", "rules", "requirements", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "tool": { "const": "speclint" },
+    "schema_version": { "const": 1 },
+    "categories": {
+      "description": "Category key to display name.",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "rules": {
+      "description": "Rule key to rule definition, for every rule that can produce a finding.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["category", "incose", "severity", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "category": { "type": "string" },
+          "incose": { "type": "string", "description": "INCOSE GtWR rule numbers the check is inspired by, e.g. \"R7, R34\"." },
+          "severity": { "$ref": "#/$defs/severity" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/requirement" }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["requirements", "graded", "with_findings", "score", "grade", "categories", "grades", "rules", "dismissed"],
+      "additionalProperties": false,
+      "properties": {
+        "requirements": { "type": "integer", "minimum": 0, "description": "All items read." },
+        "graded": { "type": "integer", "minimum": 0, "description": "Items not classified as information." },
+        "with_findings": { "type": "integer", "minimum": 0, "description": "Graded items with at least one finding that is not dismissed." },
+        "score": { "$ref": "#/$defs/meanScore" },
+        "grade": { "$ref": "#/$defs/grade" },
+        "categories": { "type": "object", "additionalProperties": { "$ref": "#/$defs/meanScore" } },
+        "grades": {
+          "description": "Number of graded items per grade.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/grade" },
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "rules": {
+          "description": "Findings per rule over graded items, dismissed findings excluded.",
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "dismissed": { "type": "integer", "minimum": 0, "description": "Findings dismissed in review, over all items." }
+      }
+    }
+  },
+  "$defs": {
+    "severity": { "enum": ["error", "warning", "info"] },
+    "grade": { "enum": ["A+", "A", "B+", "B", "C+", "C", "D", "F"] },
+    "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "meanScore": { "type": "number", "minimum": 0, "maximum": 100 },
+    "requirement": {
+      "type": "object",
+      "required": ["id", "source", "text", "lang", "findings", "score", "grade", "categories"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "source": { "type": "string", "description": "Input file the item was read from." },
+        "text": { "type": "string" },
+        "lang": { "enum": ["en", "de"] },
+        "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+        "score": { "$ref": "#/$defs/score" },
+        "grade": { "$ref": "#/$defs/grade" },
+        "categories": { "type": "object", "additionalProperties": { "$ref": "#/$defs/score" } },
+        "classification": {
+          "description": "Present with `check --classify`. Items with an obligation verb are always requirements (model \"obligation verb\").",
+          "type": "object",
+          "required": ["model", "kind", "score"],
+          "additionalProperties": false,
+          "properties": {
+            "model": { "type": "string" },
+            "kind": { "enum": ["requirement", "information"] },
+            "score": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "review": {
+          "description": "Present after `speclint merge` for reviewed items.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "question": { "type": "string", "description": "Clarification question for the customer, in the item's language." },
+            "rewrite": { "type": "string", "description": "Suggested text; unknown values appear as [TBD: ...] placeholders." }
+          }
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["rule", "match", "start", "end", "severity", "category", "incose", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "rule": { "type": "string" },
+        "match": { "type": "string", "description": "Matched text, equal to text[start:end]." },
+        "start": { "type": "integer", "minimum": 0, "description": "Character offset (Unicode code points) into the requirement text." },
+        "end": { "type": "integer", "minimum": 0 },
+        "severity": { "$ref": "#/$defs/severity" },
+        "category": { "type": "string" },
+        "incose": { "type": "string" },
+        "message": { "type": "string" },
+        "dismissed": { "type": "boolean", "description": "Set by review; dismissed findings do not count towards scores." },
+        "review_reason": { "type": "string" }
+      }
+    }
+  }
+}

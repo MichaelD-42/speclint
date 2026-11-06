@@ -1,0 +1,12 @@
+{
+  "name": "speclint",
+  "description": "Requirements quality linting for agents",
+  "owner": { "name": "Michael Dold" },
+  "plugins": [
+    {
+      "name": "speclint",
+      "source": "./",
+      "description": "Lint requirements and user stories (English/German), review findings with Haiku subagents and write graded results as JSON"
+    }
+  ]
+}

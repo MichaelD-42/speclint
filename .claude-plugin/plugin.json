@@ -1,0 +1,16 @@
+{
+  "name": "speclint",
+  "version": "0.1.0",
+  "description": "Lint requirements and user stories (English/German), review findings with Haiku subagents and write graded results as JSON",
+  "author": {
+    "name": "Michael Dold"
+  },
+  "keywords": [
+    "requirements",
+    "incose",
+    "lint",
+    "reqif",
+    "sphinx-needs"
+  ],
+  "license": "MIT"
+}

@@ -1,0 +1,91 @@
+# Rule data. Inspired by the INCOSE Guide to Writing Requirements (GtWR v4); wording is our own.
+# phrases: matched case-insensitively on the raw text (use for fixed phrases and abbreviations).
+# lemmas:  single words matched on the token or its lemma (catches German inflection: ausreichende -> ausreichend).
+# severity: error | warning | info
+
+[categories]
+accuracy = "Accuracy"
+completeness = "Completeness"
+non_ambiguity = "Non-ambiguity"
+realism = "Realism"
+
+[rules.vague-term]
+category = "accuracy"
+incose = "R7, R34"
+severity = "warning"
+message = "Vague or unmeasurable term; ask for a measurable value"
+en.lemmas = ["fast", "quick", "quickly", "slow", "slowly", "sufficient", "sufficiently", "adequate", "adequately", "appropriate", "appropriately", "suitable", "reasonable", "robust", "reliable", "user-friendly", "easy", "easily", "simple", "flexible", "efficient", "efficiently", "optimal", "significant", "significantly", "timely", "approximately", "several", "many", "few", "various", "seamless", "seamlessly", "intuitive"]
+en.phrases = ["as soon as possible", "state of the art", "state-of-the-art", "user friendly", "high performance"]
+# "vieler"/"einiger" are spaCy's lemmas of vielen/einigen; "wenigen" is listed as is because its lemma "weniger" is also the bound in "weniger als"
+de.lemmas = ["schnell", "zügig", "langsam", "ausreichend", "hinreichend", "angemessen", "geeignet", "adäquat", "robust", "zuverlässig", "benutzerfreundlich", "einfach", "flexibel", "effizient", "optimal", "schnellstmöglich", "zeitnah", "ungefähr", "etwa", "circa", "einige", "einiger", "mehrere", "viele", "vieler", "wenige", "wenigen", "verschieden", "entsprechend", "üblich", "intuitiv", "nahtlos", "performant"]
+de.phrases = ["ca.", "Stand der Technik", "so schnell wie möglich"]
+
+[rules.missing-tolerance]
+category = "accuracy"
+incose = "R6, R33"
+severity = "warning"
+message = "Value with unit but no tolerance or bound (min/max, ±, range)"
+
+[rules.escape-clause]
+category = "completeness"
+incose = "R8"
+severity = "error"
+message = "Escape clause makes the requirement non-binding"
+en.phrases = ["where possible", "if possible", "as far as possible", "to the extent possible", "as much as possible", "if necessary", "if needed", "when needed", "as needed", "when necessary", "as necessary", "as closely as possible", "as far as practicable", "as well as possible", "as much as practical", "as appropriate", "as required", "if applicable", "where applicable", "if feasible", "where feasible", "if practical", "where practical"]
+de.phrases = ["wenn möglich", "falls möglich", "soweit möglich", "sofern möglich", "nach Möglichkeit", "möglichst", "ggf.", "gegebenenfalls", "falls erforderlich", "falls notwendig", "wenn nötig", "wenn notwendig", "so weit wie möglich", "so gut wie möglich", "weitestgehend", "weitgehend", "sofern erforderlich", "soweit erforderlich", "sofern sinnvoll", "soweit sinnvoll", "im Rahmen der Möglichkeiten", "nach Bedarf"]
+
+[rules.open-ended]
+category = "completeness"
+incose = "R9"
+severity = "warning"
+message = "Open-ended list; enumerate the complete set"
+en.phrases = ["etc.", "etc", "and so on", "and so forth", "including but not limited to", "but not limited to", "such as", "e.g.", "among others", "and similar", "or similar"]
+de.phrases = ["usw.", "etc.", "u.a.", "u. a.", "unter anderem", "z.B.", "z. B.", "zum Beispiel", "beispielsweise", "wie etwa", "und ähnliches", "u.ä.", "u. ä.", "o.ä.", "o. ä.", "oder ähnliches", "und Weiteres", "insbesondere"]
+
+[rules.undefined-condition]
+category = "completeness"
+incose = "R27"
+severity = "info"
+message = "Condition that is rarely defined; check it is specified (glossary or definition)"
+en.phrases = ["in case of failure", "in case of error", "in case of a failure", "in case of an error", "under normal conditions", "in normal operation", "during normal operation", "when required", "if required", "in an emergency", "in emergency situations"]
+de.phrases = ["im Fehlerfall", "bei Fehlern", "bei Bedarf", "im Bedarfsfall", "im Normalbetrieb", "unter normalen Bedingungen", "in der Regel", "im Notfall", "bei Störungen", "im Störfall"]
+
+[rules.ambiguous-combinator]
+category = "non_ambiguity"
+incose = "R17, R19"
+severity = "warning"
+message = "Ambiguous combinator; split the requirement or state the logic explicitly"
+en.phrases = ["and/or", "and / or"]
+de.phrases = ["und/oder", "und / oder", "bzw.", "beziehungsweise"]
+
+[rules.unresolved-reference]
+category = "non_ambiguity"
+incose = "R24"
+severity = "warning"
+message = "Pronoun or back-reference; name the entity explicitly"
+en.pronouns = ["it", "they", "them", "this", "these", "those", "that"]
+en.phrases = ["the above", "above-mentioned", "above mentioned", "aforementioned", "the former", "the latter", "see above"]
+de.pronouns = ["es", "sie", "dies", "diese", "dieser", "dieses", "diesem", "diesen", "derselbe", "dieselbe", "dasselbe"]
+de.phrases = ["oben genannt", "oben genannte", "oben genannten", "obige", "obigen", "o.g.", "o. g.", "vorgenannt", "vorgenannte", "vorgenannten", "siehe oben"]
+
+[rules.passive-no-actor]
+category = "non_ambiguity"
+incose = "R2"
+severity = "info"
+message = "Passive voice without actor; who is responsible?"
+
+[rules.absolute]
+category = "realism"
+incose = "R26"
+severity = "warning"
+message = "Absolute statement; usually unachievable or unverifiable"
+en.lemmas = ["always", "never"]
+en.phrases = ["at all times", "under all circumstances", "under any circumstances", "in all cases", "without exception"]
+de.lemmas = ["immer", "nie", "niemals", "jederzeit", "stets", "ausnahmslos"]
+de.phrases = ["unter allen Umständen", "in jedem Fall", "zu jeder Zeit", "ohne Ausnahme"]
+
+# Units for missing-tolerance (case-sensitive) and the words that make a value bounded.
+[tolerance]
+units = ["ms", "µs", "us", "ns", "s", "sec", "min", "h", "Hz", "kHz", "MHz", "GHz", "V", "mV", "kV", "A", "mA", "µA", "W", "mW", "kW", "Wh", "kWh", "Ah", "mAh", "°C", "K", "m", "mm", "cm", "km", "µm", "km/h", "m/s", "m/s²", "kg", "g", "t", "N", "Nm", "bar", "mbar", "Pa", "kPa", "%", "dB", "dBm", "lx", "cd", "rpm", "U/min", "bit", "Bit", "byte", "Byte", "kB", "MB", "GB", "kbit/s", "Mbit/s", "fps", "Ω", "kΩ"]
+en.bounds = ["max", "maximum", "min", "minimum", "at least", "at most", "within", "less than", "more than", "greater than", "lower than", "higher than", "up to", "no more than", "no less than", "not exceed", "not more than", "not less than", "between", "below", "above", "under", "over", "exceed", "exceeds", "≤", "≥", "<", ">", "±", "+/-", "+-"]
+de.bounds = ["max", "max.", "maximal", "höchstens", "min", "min.", "mindestens", "minimal", "innerhalb", "weniger als", "mehr als", "kleiner", "größer", "unter", "über", "bis", "zwischen", "nicht überschreiten", "nicht unterschreiten", "≤", "≥", "<", ">", "±", "+/-", "+-"]
