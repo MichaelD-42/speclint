@@ -138,3 +138,30 @@ def test_text_report_names_related_items(tmp_path, capsys):
     main(["check", str(src)])
     out = capsys.readouterr().out
     assert "duplicate" in out and "(also R-2)" in out and "(also R-1)" in out
+
+
+def test_duplicate_join_matches_brute_force():
+    import random
+    import re
+
+    from speclint.spec_checks import _duplicate_pairs
+
+    rng = random.Random(1)
+    words = [f"w{i}" for i in range(40)]
+    sets = []
+    for _ in range(300):
+        base = rng.sample(words, rng.randint(3, 25))
+        sets.append(set(base))
+        if rng.random() < 0.3:  # near copies: one word swapped or added
+            near = set(base) | {rng.choice(words)}
+            sets.append(near)
+    texts = [" ".join(sorted(s)) for s in sets]
+    toks = [set(re.findall(r"\w+", t)) for t in texts]
+    brute = {
+        (i, j)
+        for i in range(len(toks))
+        for j in range(i + 1, len(toks))
+        if min(len(toks[i]), len(toks[j])) >= 5
+        and len(toks[i] & toks[j]) / len(toks[i] | toks[j]) >= 0.9
+    }
+    assert brute and _duplicate_pairs(toks) == brute

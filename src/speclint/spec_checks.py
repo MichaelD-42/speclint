@@ -1,7 +1,8 @@
 """Checks across the whole run: each finding goes on every affected item and names the others in `related`."""
 
+import math
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from functools import cache
 
 from .checks import RULES, Finding, Result
@@ -10,6 +11,9 @@ SPEC_RULES = {"undefined-acronym", "decimal-format", "unit-system", "duplicate"}
 
 _ACRONYM = re.compile(r"(?<!\w)[A-ZÄÖÜ]{2,}\d*(?!\w)")
 _TOKENS = re.compile(r"\w+")
+_A = r"[A-ZÄÖÜ]{2,}\d*"
+# "Electronic Control Unit (ECU)", "ECU (Electronic Control Unit)", a glossary line "ECU: …"
+_EXPANDED = re.compile(rf"\(({_A})\)|(?<!\w)({_A})\s+\(|^\s*({_A})\s*[:–-]\s*\S")
 
 
 def check_spec(results: list[Result], active: set[str]) -> None:
@@ -33,23 +37,39 @@ def _add(results, hits: dict[int, list[tuple[int, int]]], rule: str) -> None:
             results[key].findings.append(Finding(rule, text[s:e], s, e, related))
 
 
-def _duplicates(results) -> None:
-    # shortcut: O(n²) pairwise, fine to a few thousand items; switch to MinHash if specs get larger
-    toks = [set(_TOKENS.findall(r.req.text.lower())) for r in results]
-    pairs = defaultdict(set)
-    for i, a in enumerate(toks):
-        if len(a) < 5:
+def _duplicate_pairs(toks: list[set[str]], t: float = 0.9) -> set[tuple[int, int]]:
+    """Pairs i < j with at least 5 tokens each and Jaccard ≥ t. Exact prefix-filter join, not O(n²):
+    with tokens ordered rarest first, two sets with Jaccard ≥ t share a token among the first
+    n - ceil(t·n) + 1 tokens of each."""
+    freq = Counter(w for s in toks for w in s)
+    index, pairs = defaultdict(list), set()
+    for i, s in enumerate(toks):
+        if len(s) < 5:
             continue
-        for j in range(i + 1, len(toks)):
+        ordered = sorted(s, key=lambda w: (freq[w], w))
+        prefix = ordered[: len(s) - math.ceil(t * len(s) - 1e-9) + 1]
+        cands = {j for w in prefix for j in index[w]}
+        for j in cands:
             b = toks[j]
-            if len(b) < 5 or min(len(a), len(b)) / max(len(a), len(b)) < 0.9:
-                continue  # Jaccard ≤ size ratio, so it can't reach 0.9
-            if len(a & b) / len(a | b) >= 0.9:
-                pairs[i].add(j)
-                pairs[j].add(i)
-    for key, others in pairs.items():
+            if (
+                min(len(s), len(b)) / max(len(s), len(b)) >= t
+                and len(s & b) / len(s | b) >= t
+            ):
+                pairs.add((j, i))
+        for w in prefix:
+            index[w].append(i)
+    return pairs
+
+
+def _duplicates(results) -> None:
+    toks = [set(_TOKENS.findall(r.req.text.lower())) for r in results]
+    others = defaultdict(set)
+    for i, j in _duplicate_pairs(toks):
+        others[i].add(j)
+        others[j].add(i)
+    for key, rel in others.items():
         text = results[key].req.text
-        related = [{"key": k, "id": results[k].req.id} for k in sorted(others)]
+        related = [{"key": k, "id": results[k].req.id} for k in sorted(rel)]
         results[key].findings.append(Finding("duplicate", text, 0, len(text), related))
 
 
@@ -64,10 +84,13 @@ def _acronyms(results) -> None:
         for m in _ACRONYM.finditer(text):
             if m.group(0) not in known:
                 hits[m.group(0)][key].append(m.span())
+    expanded = {
+        m.group(1) or m.group(2) or m.group(3)
+        for t in texts
+        for m in _EXPANDED.finditer(t)
+    }
     for acr, by_item in hits.items():
-        a = re.escape(acr)
-        expanded = re.compile(rf"\({a}\)|(?<!\w){a}\s+\(|^\s*{a}\s*[:–-]\s*\S")
-        if not any(expanded.search(text) for text in texts):
+        if acr not in expanded:
             _add(results, by_item, "undefined-acronym")
 
 
