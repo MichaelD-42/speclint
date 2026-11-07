@@ -18,7 +18,7 @@
 - Native `needs.json` (sphinx-needs builder output), alongside ReqIF: text from the need's content, ID, `type` as the requirement/information signal, document order. Field names to verify against the sphinx-needs docs.
 - An object type from the input file, when present, decides requirement vs information before any classifier.
 
-### 2. Grading: stop overpromising
+### 2. Grading: stop overpromising — done (branch feat/profiles-checks-ears, not merged)
 
 - Items without findings show "no findings", not A+ (agreed). They're a bucket of their own in the grade distribution, not counted as top grades.
 - The summary leads with "N items need clarification" and the worst items; the overall grade comes second.
@@ -39,7 +39,7 @@
 - Timing benchmarks per stage (read, rules, whole-spec rules, classify, review) at 100 / 1k / 10k items. Watch the O(n²) duplicate check.
 - Fix: missing-tolerance flags proportions as missing tolerances ("for 97% of all leads", "used by 90% of novice users").
 
-### 4. Profiles, new checks, EARS
+### 4. Profiles, new checks, EARS — done (branch feat/profiles-checks-ears, not merged)
 
 See the design doc. Summary:
 
@@ -65,6 +65,14 @@ Hits (items) and true positives in the sample:
 - decimal-format, unit-system, soll-obligation: 0 hits. PROMISE is English, with few units and no German. Unverified until the eval set.
 
 All rules with enough hits pass the 14/20 bar, so none was removed from the profiles. Throughput: 905 req/s under `system` (was 964 with nine rules). The duplicate check now uses an exact prefix-filter join instead of O(n²) pairs, and the acronym check makes a single pass.
+
+### Deferred from the final branch review (2026-11-07)
+
+- Bilingual spec: a short German item whose language detection is a tie (or where English is the majority) is treated as English. It then gets decimal-format and the EARS message "no shall".
+- In German, the single-thought finding starts at the conjunction ("und darf") instead of the second modal.
+- Profile type errors (rules as a string, extends as a list) give a garbled message or a traceback instead of a clean exit 2. The cycle message lists names in arbitrary order.
+- Oblique flags German hyphen pairs ("Ein-/Ausgänge", "Lade-/Entladestrom").
+- "ECU-Software muss …" at the start of an item counts as a glossary expansion of ECU.
 
 ## Later: classification (Haiku, configurable per profile)
 
