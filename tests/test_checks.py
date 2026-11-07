@@ -107,6 +107,18 @@ def rules(text, lang, profile="system"):
         ("de", "Das Steuergerät sollte den Fehler speichern.", "weak-obligation"),
         ("de", "Das Steuergerät wird den Fehler speichern.", "weak-obligation"),
         ("de", "Das Steuergerät soll den Fehler speichern.", "soll-obligation"),
+        ("en", "The ECU shall report speed/position to the gateway.", "oblique"),
+        ("de", "Das Steuergerät muss Drehzahl/Position melden.", "oblique"),
+        (
+            "en",
+            "The ECU shall store the error (including the time stamp and the voltage).",
+            "parenthetical",
+        ),
+        (
+            "de",
+            "Das Steuergerät muss den Fehler (mit Zeitstempel und Spannung) speichern.",
+            "parenthetical",
+        ),
     ],
 )
 def test_rule_fires(lang, text, rule):
@@ -364,3 +376,17 @@ def test_soll_is_binding_in_customer_profile():
     assert "soll-obligation" not in rules(
         "Das Steuergerät soll den Fehler speichern.", "de", "customer"
     )
+
+
+@pytest.mark.parametrize(
+    "lang,text",
+    [
+        ("en", "The vehicle shall reach 100 km/h within 10 s ± 1 s."),
+        ("en", "The ECU shall accept dates like 12/05 and ratios like 1/2."),
+        ("en", "The ECU shall load its firmware from https://host/fw and src/main/fw."),
+        ("en", "The ECU shall send and/or log the error."),  # ambiguous-combinator only
+        ("de", "Das Steuergerät (ECU) muss starten."),
+    ],
+)
+def test_oblique_and_parenthetical_do_not_fire(lang, text):
+    assert not {"oblique", "parenthetical"} & set(rules(text, lang))

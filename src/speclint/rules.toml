@@ -152,8 +152,22 @@ severity = "info"
 message = "\"soll\" can mean desired, not mandatory; use \"muss\" if binding"
 de.weak = ["soll", "sollen"]
 
+
+[rules.oblique]
+category = "non_ambiguity"
+incose = "R17"
+severity = "warning"
+message = "Slash between words can mean and, or, or per; write it out"
+
+[rules.parenthetical]
+category = "non_ambiguity"
+incose = "R21"
+severity = "info"
+message = "Text in parentheses; make it part of the requirement or move it to a note"
+
 # Units for missing-tolerance (case-sensitive) and the words that make a value bounded.
 [tolerance]
+rates = ["km/h", "m/s", "m/s²", "kbit/s", "Mbit/s", "U/min"]  # a slash that is a unit, not an oblique
 units = ["ms", "µs", "us", "ns", "s", "sec", "min", "h", "Hz", "kHz", "MHz", "GHz", "V", "mV", "kV", "A", "mA", "µA", "W", "mW", "kW", "Wh", "kWh", "Ah", "mAh", "°C", "K", "m", "mm", "cm", "km", "µm", "km/h", "m/s", "m/s²", "kg", "g", "t", "N", "Nm", "bar", "mbar", "Pa", "kPa", "%", "dB", "dBm", "lx", "cd", "rpm", "U/min", "bit", "Bit", "byte", "Byte", "kB", "MB", "GB", "kbit/s", "Mbit/s", "fps", "Ω", "kΩ"]
 en.bounds = ["max", "maximum", "min", "minimum", "at least", "at most", "within", "less than", "more than", "greater than", "lower than", "higher than", "up to", "no more than", "no less than", "not exceed", "not more than", "not less than", "between", "below", "above", "under", "over", "exceed", "exceeds", "≤", "≥", "<", ">", "±", "+/-", "+-"]
 de.bounds = ["max", "max.", "maximal", "höchstens", "min", "min.", "mindestens", "minimal", "innerhalb", "weniger als", "mehr als", "kleiner", "größer", "unter", "über", "bis", "zwischen", "nicht überschreiten", "nicht unterschreiten", "≤", "≥", "<", ">", "±", "+/-", "+-"]
@@ -165,5 +179,5 @@ rules = ["vague-term", "missing-tolerance", "escape-clause", "open-ended", "unde
 
 [profiles.system]
 extends = "customer"
-enable = ["purpose-phrase", "superfluous-infinitive", "clause-combinator", "single-thought", "soll-obligation"]
+enable = ["purpose-phrase", "superfluous-infinitive", "clause-combinator", "single-thought", "soll-obligation", "oblique", "parenthetical"]
 severity = { passive-no-actor = "warning" }

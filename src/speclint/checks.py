@@ -275,6 +275,37 @@ def _passive_no_actor(doc, lang: str) -> list[Finding]:
     return out
 
 
+_SLASHED = re.compile(r"(?<![^\s(])[^\s/()]+(?:/+[^\s/()]+)+")  # whole slashed token
+_PARENS = re.compile(r"\(([^()]*)\)")
+
+
+def _oblique(text: str) -> list[Finding]:
+    """word/word; not units (km/h), numbers (12/05), paths or URLs, and not and/or (ambiguous-combinator)."""
+    t = RULES["tolerance"]
+    skip = set(t["rates"]) | set(t["units"]) | {"and/or", "und/oder"}
+    out = []
+    for m in _SLASHED.finditer(text):
+        word = m.group(0).rstrip(".,;:!?")
+        parts = word.split("/")
+        if (
+            word.lower() in skip
+            or "//" in word
+            or len(parts) > 2
+            or any(p[:1].isdigit() for p in parts)
+        ):
+            continue
+        out.append(Finding("oblique", word, m.start(), m.start() + len(word)))
+    return out
+
+
+def _parenthetical(text: str) -> list[Finding]:
+    return [
+        Finding("parenthetical", m.group(0), m.start(), m.end())
+        for m in _PARENS.finditer(text)
+        if len(m.group(1).split()) > 3
+    ]
+
+
 def _modals(doc, lang: str, active: set[str]) -> list[Finding]:
     def is_modal(t, words):
         if lang == "en":
@@ -358,6 +389,10 @@ def check_doc(doc, lang: str, active: set[str]) -> list[Finding]:
     if "passive-no-actor" in active:
         findings += _passive_no_actor(doc, lang)
     findings += _modals(doc, lang, active)
+    if "oblique" in active:
+        findings += _oblique(text)
+    if "parenthetical" in active:
+        findings += _parenthetical(text)
     if "purpose-phrase" in active and lang == "de":
         findings += _purpose_de(doc)
     # one finding per span: phrase and lemma lists may overlap (e.g. "so schnell wie möglich")

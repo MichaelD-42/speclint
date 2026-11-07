@@ -61,6 +61,8 @@ The `system` profile adds:
 - **Superfluous infinitives:** be able to, be capable of; in der Lage sein.
 - **Clause combinators:** unless, except, otherwise; es sei denn, sondern, andernfalls.
 - **One thought per requirement:** a second shall/must, muss/soll in the same item.
+- **Slashes:** speed/position, Drehzahl/Position. Units (km/h), numbers (12/05), paths and URLs are allowed.
+- **Long parentheticals:** more than three words in parentheses; "(ECU)" is fine.
 - **"soll" as non-binding:** many house styles use muss = mandatory, soll = desired. In `customer`, "soll" counts as binding.
 
 Each finding caps the grade of its item: an error at D, a warning at B, an info at A. The item gets the worst cap, then one letter lower for each further distinct warning or error rule, down to F. Infos and repeated hits of the same rule don't lower it further. An item without findings gets "no findings". The caps live in `rules.toml` under `[grading]`. The language is detected for each item; an item too short to tell takes the language of most items in the run. You can also set it with `--lang`.
