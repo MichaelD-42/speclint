@@ -31,7 +31,7 @@ def load_profile(spec: str = "customer", ears: bool = False) -> Profile:
         )
     if ears:  # the profile's own severity table may still override it
         data = {**data, "enable": [*data.get("enable", []), "ears-nonconforming"]}
-    sev = _resolve(spec, data, set())
+    sev = _resolve(spec, data, [])
     if ears:  # --ears wins over a profile that disables the rule
         sev.setdefault(
             "ears-nonconforming", RULES["rules"]["ears-nonconforming"]["severity"]
@@ -39,10 +39,23 @@ def load_profile(spec: str = "customer", ears: bool = False) -> Profile:
     return Profile(spec, sev, ears)
 
 
-def _resolve(name: str, data: dict, seen: set[str]) -> dict[str, str]:
+def _check_types(name: str, data: dict) -> None:
+    # ValueError, not TypeError: the CLI turns ValueError into "error: …" and exit 2
+    if not isinstance(data.get("extends", ""), str):
+        raise ValueError(f"{name}: extends must be a profile name")  # noqa: TRY004
+    for key in ("rules", "enable", "disable"):
+        v = data.get(key, [])
+        if not isinstance(v, list) or not all(isinstance(r, str) for r in v):
+            raise ValueError(f"{name}: {key} must be a list of rule names")
+    if not isinstance(data.get("severity", {}), dict):
+        raise ValueError(f"{name}: severity must be a table (rule = severity)")  # noqa: TRY004
+
+
+def _resolve(name: str, data: dict, seen: list[str]) -> dict[str, str]:
     if name in seen:
         raise ValueError(f"profile extends cycle: {' -> '.join([*seen, name])}")
-    seen = seen | {name}
+    seen = [*seen, name]
+    _check_types(name, data)
     if base := data.get("extends"):
         if base not in RULES["profiles"]:
             raise ValueError(f"{name}: extends unknown profile {base!r}")

@@ -14,6 +14,12 @@ RULES = tomllib.loads(
 CATEGORIES: dict[str, str] = RULES["categories"]
 GRADES = ["A", "B", "C", "D", "F"]
 NONE = "none"  # no active findings: not a top grade, nothing was detected
+# An obligation verb makes an item a requirement, whatever the input or Haiku says: a weak requirement must never be hidden as information.
+OBLIGATION = re.compile(
+    r"\b(?:shall|must|should|is required to|are required to|muss|müssen|soll|sollen|sollte|sollten|darf|dürfen|"
+    r"ist zu|sind zu|hat zu|haben zu)\b",
+    re.IGNORECASE,
+)
 MODELS = {"en": "en_core_web_sm", "de": "de_core_news_sm"}
 
 _DE_HINTS = {
@@ -68,6 +74,7 @@ class Requirement:
     id: str
     text: str
     source: str = ""
+    kind: str = ""  # "requirement" / "information" when the input file says so (object type, heading)
 
 
 @dataclass
@@ -103,6 +110,13 @@ def grade(findings: list[dict]) -> str:
     hard = {f["rule"] for f in active if f["severity"] != "info"}
     steps = max(0, len(hard) - 1) * g["pileup_step"]
     return GRADES[min(base + steps, len(GRADES) - 1)]
+
+
+def _input_kind(req: Requirement) -> dict:
+    """The input file's own kind. An obligation verb overrides "information", as it overrides the classifier."""
+    if req.kind == "information" and OBLIGATION.search(req.text):
+        return {"model": "obligation verb", "kind": "requirement", "score": 1.0}
+    return {"model": "input", "kind": req.kind, "score": 1.0}
 
 
 def _default_profile():
@@ -147,6 +161,7 @@ def report(results: list[Result], profile=None) -> dict:
                     for f in r.findings
                 ],
                 **({"ears": {"pattern": r.ears}} if r.ears else {}),
+                **({"classification": _input_kind(r.req)} if r.req.kind else {}),
             }
             for r in results
         ],
@@ -190,6 +205,8 @@ def detect_lang(text: str) -> str | None:
     """None when the hint words don't decide (terse items like "Versorgungsspannung höchstens 16 V.")."""
     words = re.findall(r"\w+", text.lower())
     de, en = sum(w in _DE_HINTS for w in words), sum(w in _EN_HINTS for w in words)
+    if de == en and re.search(r"[äöüß]", text.lower()):
+        return "de"  # umlauts decide terse items the hint words can't
     return "de" if de > en else "en" if en > de else None
 
 
@@ -231,6 +248,7 @@ _RANGE_BEFORE = re.compile(r"\d\s*(?:-|–|\.\.|to|bis)\s*$", re.IGNORECASE)
 _RANGE_GAP = re.compile(r"\s*(-|–|\.\.|to|bis|and|und)\s*", re.IGNORECASE)
 _TOL_AFTER = re.compile(r"^\s*(?:±|\+/-|\+-|\+\s?\d)")  # "12 V +10 %/-5 %" too
 _TOL_SECOND = re.compile(r"/\s*[+-]\s*$")  # the "-5 %" of "+10 %/-5 %"
+_PROPORTION = re.compile(r"\s+(?:of|der|des|aller|von)\b", re.IGNORECASE)
 _HUNDRED_PERCENT = re.compile(r"^100\s?%$")
 
 
@@ -239,6 +257,8 @@ def _missing_tolerance(text: str, lang: str) -> list[Finding]:
     for m in _tolerance_re().finditer(text):
         if _HUNDRED_PERCENT.match(m.group(0)):
             continue  # absolute rule territory, not a tolerance problem
+        if m.group(0).endswith("%") and _PROPORTION.match(text, m.end()):
+            continue  # "97% of all leads" is a share of a population, not a measured value
         # the bound must belong to this value: look back no further than the previous value
         before = text[max(prev_end, m.start() - 40) : m.start()]
         bounded = bool(
@@ -307,6 +327,7 @@ def _oblique(text: str) -> list[Finding]:
             or len(parts) > 2
             or word.replace("/", "").isupper()  # I/O, TCP/IP: fixed technical names
             or "." in parts[0]  # host/path: www.example.com/docs
+            or parts[0].endswith("-")  # German pair: Ein-/Ausgänge
             or any(p[:1].isdigit() for p in parts)
         ):
             continue
@@ -320,6 +341,14 @@ def _parenthetical(text: str) -> list[Finding]:
         for m in _PARENS.finditer(text)
         if len(m.group(1).split()) > 3
     ]
+
+
+def _clause_verb(modal):
+    """The verb a modal governs, so the span starts at the modal: EN head (aux), DE oc child.
+    Falls back to the modal alone (German "und darf …" hangs the modal off the conjunction)."""
+    if oc := next((c for c in modal.children if c.dep_ == "oc"), None):
+        return oc
+    return modal.head if modal.head.i > modal.i else modal
 
 
 def _modals(doc, lang: str, active: set[str]) -> list[Finding]:
@@ -337,7 +366,7 @@ def _modals(doc, lang: str, active: set[str]) -> list[Finding]:
     if "single-thought" in active:
         words = set(RULES["rules"]["single-thought"][lang]["obligation"])
         out += [
-            _span("single-thought", doc, t, t.head)
+            _span("single-thought", doc, t, _clause_verb(t))
             for t in [t for t in doc if is_modal(t, words)][1:]
         ]
     for rule in ("weak-obligation", "soll-obligation"):

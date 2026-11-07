@@ -388,3 +388,23 @@ def test_soll_is_binding_in_customer_profile():
 )
 def test_oblique_and_parenthetical_do_not_fire(lang, text):
     assert not {"oblique", "parenthetical"} & set(rules(text, lang))
+
+
+@pytest.mark.parametrize(
+    "lang,text",
+    [
+        ("en", "Each lead evaluation shall complete within 25 s for 97% of all leads."),
+        ("en", "The product shall be usable by 90% of novice users."),
+        ("de", "95 % der Nutzer müssen die Funktion ohne Handbuch bedienen können."),
+        (
+            "de",
+            "Die Anzeige muss bei 99 % aller Starts innerhalb von max. 2 s erscheinen.",
+        ),
+    ],
+)
+def test_percentage_of_a_population_is_not_a_missing_tolerance(lang, text):
+    assert "missing-tolerance" not in rules(text, lang)
+
+
+def test_plain_percentage_value_still_needs_a_tolerance():
+    assert "missing-tolerance" in rules("Die Auslastung muss 80 % betragen.", "de")

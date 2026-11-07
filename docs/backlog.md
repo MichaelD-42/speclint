@@ -11,12 +11,13 @@
 
 ## Now
 
-### 1. Readers: close the metadata gap
+### 1. Readers: close the metadata gap — done (branch feat/readers, stacked on feat/profiles-checks-ears, not merged)
 
 - ReqIF: read enumeration attributes (`ATTRIBUTE-VALUE-ENUMERATION` → `ENUM-VALUE-REF` → the enum value's LONG-NAME). Today they're dropped, so a DOORS object type ("Requirement"/"Information") never arrives.
 - ReqIF: emit items in SPEC-HIERARCHY order, not file order; keep headings (ReqIF.ChapterName) as information items or as section context.
 - Native `needs.json` (sphinx-needs builder output), alongside ReqIF: text from the need's content, ID, `type` as the requirement/information signal, document order. Field names to verify against the sphinx-needs docs.
 - An object type from the input file, when present, decides requirement vs information before any classifier.
+- Built: sphinx-needs types are filtered by `[input].need_types` in rules.toml (default req, spec, requirement, specification), for needs.json and for RST/MyST directives alike. External needs are skipped. needs.json text comes from `content`, or `description` in older files and imports, with `title` as the fallback. Object-type attribute names and values sit in `[input]`. An obligation verb still overrides "information". Untested on a real DOORS export: the attribute and value names are guesses until next week's data.
 
 ### 2. Grading: stop overpromising — done (branch feat/profiles-checks-ears, not merged)
 
@@ -36,8 +37,21 @@
 
 - Eval harness: labeled EN/DE automotive-style items, precision/recall per rule and per profile. Prerequisite for tuning rules and profiles.
 - Classifier test: on labeled requirement/information items, compare GLiClass vs the plain rule "no obligation verb → information" vs Haiku. If GLiClass adds nothing over the baseline, drop it (and the 1.5 GB extra) and use Haiku only.
-- Timing benchmarks per stage (read, rules, whole-spec rules, classify, review) at 100 / 1k / 10k items. Watch the O(n²) duplicate check.
-- Fix: missing-tolerance flags proportions as missing tolerances ("for 97% of all leads", "used by 90% of novice users").
+  - First run (2026-11-07, `bench/classify_eval.py`, 70 EN/DE items without obligation verbs, 36 information; written by Claude, IDs neutral, order shuffled). On requirement recall, "requirements" means requirements written without a modal verb:
+    - baseline: 51% accuracy, requirement recall 0%.
+    - GLiClass: 50% accuracy, requirement recall 6% (2 of 34), 15 items/s.
+    - Haiku: 97% accuracy, information precision 100% and recall 94%, requirement recall 100%. Its only misses are "the door module is mounted inside the door trim" (EN and DE), arguably a requirement.
+  - Verdict so far: GLiClass adds nothing over the baseline; Haiku is far better. Caveat: the same author wrote the items, the labels and Haiku's prompt (bench/classify_eval_prompt.md), so the 97% is optimistic. Rerun on the real work items before deleting GLiClass.
+  - Decision (2026-11-07, Michael): drop the local model and use Haiku only. Done (feat/readers): `--classify`, `classify.py`, the `classify` extra (torch, gliclass) and `bench/classify_promise.py` are removed.
+  - How it works now: an obligation verb, or the input file's kind, decides first, in every run. `batches` marks every other item `"classify": true`, including items without findings. The req-reviewer returns `kind`, and `merge` records `{"model": "haiku", "kind": …}`. A Haiku kind on an item already decided is rejected and reported. Rerun bench/classify_eval.py on the real items next week.
+- Timing benchmarks per stage (read, rules, whole-spec rules, classify, review) at 100 / 1k / 10k items. Done (feat/readers): `uv run python bench/timing.py [profile] [sizes…]`. Under `system` on 2026-11-07, in seconds, at 100 / 1k / 10k items:
+  - read: 0.00 / 0.00 / 0.04
+  - per-item rules: 0.09 / 0.93 / 6.56 (about 1,100–1,500 items/s)
+  - whole-spec rules: 0.00 / 0.02 / 0.36 (the 10k run repeats PROMISE's texts about ten times, a worst case for duplicates)
+  - report: 0.00 / 0.00 / 0.08
+  - batches + merge: 0.00 / 0.02 / 0.47
+  - The Haiku review and classification run outside speclint and are not timed.
+- Fix: missing-tolerance flags proportions as missing tolerances ("for 97% of all leads", "used by 90% of novice users"). Done (feat/readers): a percentage followed by of/der/des/aller/von is skipped. On PROMISE that cuts it from 62 hits to 11, mostly uptime figures without "at least". New gap seen: "longer than" is not a bound word.
 
 ### 4. Profiles, new checks, EARS — done (branch feat/profiles-checks-ears, not merged)
 
@@ -66,7 +80,7 @@ Hits (items) and true positives in the sample:
 
 All rules with enough hits pass the 14/20 bar, so none was removed from the profiles. Throughput: 905 req/s under `system` (was 964 with nine rules). The duplicate check now uses an exact prefix-filter join instead of O(n²) pairs, and the acronym check makes a single pass.
 
-### Deferred from the final branch review (2026-11-07)
+### Deferred from the final branch review (2026-11-07) — all five fixed (feat/readers)
 
 - Bilingual spec: a short German item whose language detection is a tie (or where English is the majority) is treated as English. It then gets decimal-format and the EARS message "no shall".
 - In German, the single-thought finding starts at the conjunction ("und darf") instead of the second modal.

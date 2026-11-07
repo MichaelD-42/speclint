@@ -208,3 +208,154 @@ def test_markdown_longer_closing_fence_ends_the_block(tmp_path):
         encoding="utf-8",
     )
     assert [r.id for r in read(p)] == ["REQ_002", "REQ-1"]
+
+
+def needs_json(needs, version="1.0"):
+    import json
+
+    return json.dumps(
+        {
+            "created": "2026-11-07T08:00:00",
+            "project": "demo",
+            "current_version": version,
+            "versions": {version: {"needs_amount": len(needs), "needs": needs}},
+        }
+    )
+
+
+def test_needs_json_order_types_and_text_fields(tmp_path):
+    needs = {
+        "REQ_2": {
+            "id": "REQ_2",
+            "type": "req",
+            "title": "Second",
+            "content": "The ECU shall log.",
+            "docname": "b",
+            "lineno": 3,
+        },
+        "REQ_1": {
+            "id": "REQ_1",
+            "type": "req",
+            "title": "First",
+            "content": "The ECU shall\n   start.",
+            "docname": "a",
+            "lineno": 9,
+        },
+        "SPEC_1": {
+            "id": "SPEC_1",
+            "type": "spec",
+            "title": "Old field",
+            "description": "Das Steuergerät muss starten.",
+            "docname": "a",
+            "lineno": 20,
+        },
+        "REQ_3": {
+            "id": "REQ_3",
+            "type": "req",
+            "title": "Title only",
+            "content": "",
+            "docname": "b",
+            "lineno": 9,
+        },
+        "TC_1": {
+            "id": "TC_1",
+            "type": "test",
+            "title": "Test",
+            "content": "Check start.",
+            "docname": "a",
+            "lineno": 1,
+        },
+        "EXT_1": {
+            "id": "EXT_1",
+            "type": "req",
+            "title": "Ext",
+            "content": "Foreign.",
+            "is_external": True,
+        },
+    }
+    p = tmp_path / "needs.json"
+    p.write_text(needs_json(needs), encoding="utf-8")
+    assert [(r.id, r.text) for r in read(p)] == [
+        ("REQ_1", "The ECU shall start."),
+        ("SPEC_1", "Das Steuergerät muss starten."),
+        ("REQ_2", "The ECU shall log."),
+        ("REQ_3", "Title only"),
+    ]
+
+
+def test_needs_json_without_versions_is_an_error(tmp_path):
+    import pytest
+
+    p = tmp_path / "needs.json"
+    p.write_text('{"foo": 1}', encoding="utf-8")
+    with pytest.raises(ValueError, match="not a sphinx-needs needs.json"):
+        read(p)
+
+
+def test_rst_skips_unlisted_need_types(tmp_path):
+    p = tmp_path / "a.rst"
+    p.write_text(
+        RST
+        + "\n.. test:: Start test\n   :id: TC_001\n\n   Check that the ECU starts.\n",
+        encoding="utf-8",
+    )
+    assert [r.id for r in read(p)] == ["REQ_001", "SPEC_002"]
+
+
+REQIF_META = """<?xml version="1.0" encoding="UTF-8"?>
+<REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+ <CORE-CONTENT><REQ-IF-CONTENT>
+  <DATATYPES>
+   <DATATYPE-DEFINITION-ENUMERATION IDENTIFIER="DT-KIND" LONG-NAME="Kinds"><SPECIFIED-VALUES>
+    <ENUM-VALUE IDENTIFIER="EV-REQ" LONG-NAME="Anforderung"/>
+    <ENUM-VALUE IDENTIFIER="EV-INFO" LONG-NAME="Information"/>
+   </SPECIFIED-VALUES></DATATYPE-DEFINITION-ENUMERATION>
+  </DATATYPES>
+  <SPEC-TYPES><SPEC-OBJECT-TYPE IDENTIFIER="T1"><SPEC-ATTRIBUTES>
+   <ATTRIBUTE-DEFINITION-XHTML IDENTIFIER="AD-TEXT" LONG-NAME="ReqIF.Text"/>
+   <ATTRIBUTE-DEFINITION-STRING IDENTIFIER="AD-ID" LONG-NAME="ReqIF.ForeignID"/>
+   <ATTRIBUTE-DEFINITION-STRING IDENTIFIER="AD-HEAD" LONG-NAME="ReqIF.ChapterName"/>
+   <ATTRIBUTE-DEFINITION-ENUMERATION IDENTIFIER="AD-KIND" LONG-NAME="Objekttyp"/>
+  </SPEC-ATTRIBUTES></SPEC-OBJECT-TYPE></SPEC-TYPES>
+  <SPEC-OBJECTS>
+   <SPEC-OBJECT IDENTIFIER="o-b"><VALUES>
+    <ATTRIBUTE-VALUE-STRING THE-VALUE="LH-2"><DEFINITION><ATTRIBUTE-DEFINITION-STRING-REF>AD-ID</ATTRIBUTE-DEFINITION-STRING-REF></DEFINITION></ATTRIBUTE-VALUE-STRING>
+    <ATTRIBUTE-VALUE-XHTML><DEFINITION><ATTRIBUTE-DEFINITION-XHTML-REF>AD-TEXT</ATTRIBUTE-DEFINITION-XHTML-REF></DEFINITION>
+     <THE-VALUE><xhtml:div>Die Position liefert der Hall-Sensor.</xhtml:div></THE-VALUE></ATTRIBUTE-VALUE-XHTML>
+    <ATTRIBUTE-VALUE-ENUMERATION><DEFINITION><ATTRIBUTE-DEFINITION-ENUMERATION-REF>AD-KIND</ATTRIBUTE-DEFINITION-ENUMERATION-REF></DEFINITION>
+     <VALUES><ENUM-VALUE-REF>EV-INFO</ENUM-VALUE-REF></VALUES></ATTRIBUTE-VALUE-ENUMERATION>
+   </VALUES></SPEC-OBJECT>
+   <SPEC-OBJECT IDENTIFIER="o-a"><VALUES>
+    <ATTRIBUTE-VALUE-STRING THE-VALUE="LH-1"><DEFINITION><ATTRIBUTE-DEFINITION-STRING-REF>AD-ID</ATTRIBUTE-DEFINITION-STRING-REF></DEFINITION></ATTRIBUTE-VALUE-STRING>
+    <ATTRIBUTE-VALUE-XHTML><DEFINITION><ATTRIBUTE-DEFINITION-XHTML-REF>AD-TEXT</ATTRIBUTE-DEFINITION-XHTML-REF></DEFINITION>
+     <THE-VALUE><xhtml:div>Das Steuergerät muss starten.</xhtml:div></THE-VALUE></ATTRIBUTE-VALUE-XHTML>
+    <ATTRIBUTE-VALUE-ENUMERATION><DEFINITION><ATTRIBUTE-DEFINITION-ENUMERATION-REF>AD-KIND</ATTRIBUTE-DEFINITION-ENUMERATION-REF></DEFINITION>
+     <VALUES><ENUM-VALUE-REF>EV-REQ</ENUM-VALUE-REF></VALUES></ATTRIBUTE-VALUE-ENUMERATION>
+   </VALUES></SPEC-OBJECT>
+   <SPEC-OBJECT IDENTIFIER="o-h"><VALUES>
+    <ATTRIBUTE-VALUE-STRING THE-VALUE="Türsteuerung"><DEFINITION><ATTRIBUTE-DEFINITION-STRING-REF>AD-HEAD</ATTRIBUTE-DEFINITION-STRING-REF></DEFINITION></ATTRIBUTE-VALUE-STRING>
+   </VALUES></SPEC-OBJECT>
+   <SPEC-OBJECT IDENTIFIER="o-x"><VALUES>
+    <ATTRIBUTE-VALUE-XHTML><DEFINITION><ATTRIBUTE-DEFINITION-XHTML-REF>AD-TEXT</ATTRIBUTE-DEFINITION-XHTML-REF></DEFINITION>
+     <THE-VALUE><xhtml:div>Outside the hierarchy.</xhtml:div></THE-VALUE></ATTRIBUTE-VALUE-XHTML>
+   </VALUES></SPEC-OBJECT>
+  </SPEC-OBJECTS>
+  <SPECIFICATIONS><SPECIFICATION IDENTIFIER="S1"><CHILDREN>
+   <SPEC-HIERARCHY IDENTIFIER="h1"><OBJECT><SPEC-OBJECT-REF>o-h</SPEC-OBJECT-REF></OBJECT><CHILDREN>
+    <SPEC-HIERARCHY IDENTIFIER="h2"><OBJECT><SPEC-OBJECT-REF>o-a</SPEC-OBJECT-REF></OBJECT></SPEC-HIERARCHY>
+    <SPEC-HIERARCHY IDENTIFIER="h3"><OBJECT><SPEC-OBJECT-REF>o-b</SPEC-OBJECT-REF></OBJECT></SPEC-HIERARCHY>
+   </CHILDREN></SPEC-HIERARCHY>
+  </CHILDREN></SPECIFICATION></SPECIFICATIONS>
+ </REQ-IF-CONTENT></CORE-CONTENT>
+</REQ-IF>"""
+
+
+def test_reqif_hierarchy_order_headings_and_object_type(tmp_path):
+    p = tmp_path / "m.reqif"
+    p.write_text(REQIF_META, encoding="utf-8")
+    assert [(r.id, r.text, r.kind) for r in read(p)] == [
+        ("o-h", "Türsteuerung", "information"),
+        ("LH-1", "Das Steuergerät muss starten.", "requirement"),
+        ("LH-2", "Die Position liefert der Hall-Sensor.", "information"),
+        ("o-x", "Outside the hierarchy.", ""),
+    ]

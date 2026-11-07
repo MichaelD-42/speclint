@@ -235,3 +235,12 @@ rules = ["vague-term", "missing-tolerance", "escape-clause", "open-ended", "unde
 extends = "customer"
 enable = ["purpose-phrase", "superfluous-infinitive", "clause-combinator", "single-thought", "soll-obligation", "oblique", "parenthetical", "decimal-format", "unit-system"]
 severity = { passive-no-actor = "warning" }
+
+# Input metadata. sphinx-needs (needs.json, RST/MyST directives): only these need types are read.
+# ReqIF: the first of kind_attributes that has a value listed under requirement/information decides
+# the item's kind (case-insensitive); an obligation verb still makes an "information" item a requirement.
+[input]
+need_types = ["req", "spec", "requirement", "specification"]
+kind_attributes = ["Object Type", "Objekttyp", "Objektart", "Type", "Typ", "Anforderungstyp", "Requirement Type"]
+requirement = ["requirement", "anforderung", "req", "functional requirement", "non-functional requirement", "funktionale anforderung", "nicht-funktionale anforderung"]
+information = ["information", "info", "heading", "überschrift", "kapitel", "comment", "kommentar", "note", "hinweis", "explanation", "erläuterung", "title", "titel"]

@@ -13,7 +13,9 @@ _ACRONYM = re.compile(r"(?<!\w)[A-ZÄÖÜ]{2,}\d*(?!\w)")
 _TOKENS = re.compile(r"\w+")
 _A = r"[A-ZÄÖÜ]{2,}\d*"
 # "Electronic Control Unit (ECU)", "ECU (Electronic Control Unit)", a glossary line "ECU: …"
-_EXPANDED = re.compile(rf"\(({_A})\)|(?<!\w)({_A})\s+\(|^\s*({_A})\s*[:–-]\s*\S")
+_EXPANDED = re.compile(
+    rf"\(({_A})\)|(?<!\w)({_A})\s+\(|^\s*({_A})\s*(?::|\s[–-])\s*\S"
+)  # dash needs a space: not "ECU-Software"
 
 
 def check_spec(results: list[Result], active: set[str]) -> None:

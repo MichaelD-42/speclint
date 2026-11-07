@@ -4,9 +4,19 @@ import json
 import sys
 from pathlib import Path
 
-from .checks import rescore
+from .checks import OBLIGATION, rescore
 
 VERDICTS = {"confirmed", "dismissed"}
+KINDS = {"requirement", "information"}
+
+
+def needs_kind(r: dict) -> bool:
+    """Neither an obligation verb nor the input file decided whether the item is a requirement: Haiku does."""
+    cls = r.get("classification")
+    undecided = (
+        cls is None or cls.get("model") == "haiku"
+    )  # Haiku's own label may be revised
+    return undecided and not OBLIGATION.search(r["text"])
 
 
 def batches(doc: dict, out_dir: Path, size: int = 25) -> list[Path]:
@@ -14,7 +24,8 @@ def batches(doc: dict, out_dir: Path, size: int = 25) -> list[Path]:
     todo = [
         (key, r)
         for key, r in enumerate(doc["requirements"])
-        if r["findings"] and r.get("classification", {}).get("kind") != "information"
+        if (r["findings"] or needs_kind(r))
+        and r.get("classification", {}).get("kind") != "information"
     ]
     out_dir.mkdir(parents=True, exist_ok=True)
     for old in out_dir.glob(
@@ -33,6 +44,7 @@ def batches(doc: dict, out_dir: Path, size: int = 25) -> list[Path]:
                             "id": r["id"],
                             "lang": r["lang"],
                             "text": r["text"],
+                            **({"classify": True} if needs_kind(r) else {}),
                             "findings": [
                                 {
                                     "index": i,
@@ -112,6 +124,16 @@ def merge(doc: dict, review_files: list[Path]) -> tuple[dict, list[str]]:
             req["review"] = {
                 k: str(rv[k]) for k in ("question", "rewrite") if rv.get(k)
             }
+            if "kind" in rv:
+                if rv["kind"] not in KINDS:
+                    problems.append(f"{path}: {req['id']}: invalid kind {rv['kind']!r}")
+                elif not needs_kind(req):
+                    # an obligation verb or the input file already decided
+                    problems.append(
+                        f"{path}: {req['id']}: kind ignored, already decided"
+                    )
+                else:
+                    req["classification"] = {"model": "haiku", "kind": rv["kind"]}
     return rescore(doc), problems
 
 
