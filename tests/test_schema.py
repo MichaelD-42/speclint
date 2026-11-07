@@ -3,7 +3,6 @@ from pathlib import Path
 
 import jsonschema
 
-from speclint import classify as c
 from speclint.checks import Requirement, check, report
 from speclint.cli import main
 from speclint.review import merge
@@ -30,14 +29,8 @@ def test_schema_is_valid():
     jsonschema.Draft202012Validator.check_schema(SCHEMA)
 
 
-def test_check_classify_and_merge_outputs_match_schema(tmp_path, monkeypatch):
+def test_check_and_merge_outputs_match_schema(tmp_path):
     doc = report(check(REQS))
-    validate(doc)
-
-    monkeypatch.setattr(
-        c, "top", lambda texts, labels: [("information", 0.9)] * len(texts)
-    )
-    doc = c.classify(doc)
     validate(doc)
 
     review = tmp_path / "r.review.json"
@@ -57,6 +50,7 @@ def test_check_classify_and_merge_outputs_match_schema(tmp_path, monkeypatch):
                             }
                         ],
                     },
+                    {"key": 2, "id": "C", "findings": [], "kind": "information"},
                     {
                         "key": 0,
                         "id": "A",

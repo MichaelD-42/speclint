@@ -4,7 +4,7 @@ import sys
 import zipfile
 from pathlib import Path
 
-from .checks import GRADES, NONE, check, report, rescore
+from .checks import GRADES, NONE, check, report
 from .profiles import load_profile
 from .readers import read
 from .review import batches, main_merge
@@ -68,11 +68,6 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--ears", action="store_true", help="also check EARS conformance")
     c.add_argument("--id-col", help="CSV column holding the requirement ID")
     c.add_argument("--text-col", help="CSV column holding the requirement text")
-    c.add_argument(
-        "--classify",
-        action="store_true",
-        help="label requirement vs information with GLiClass (extra 'classify')",
-    )
     c.add_argument("-o", "--output", type=Path, help="write the results JSON here")
     c.add_argument(
         "--fail-on",
@@ -92,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
 
     m = sub.add_parser(
         "merge",
-        help="merge reviewer output into the results JSON (in place) and rescore",
+        help="merge reviewer output into the results JSON (in place) and regrade",
     )
     m.add_argument("results", type=Path)
     m.add_argument("reviews", nargs="+", type=Path)
@@ -123,10 +118,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
     doc = report(check(reqs, a.lang, profile), profile)
-    if a.classify:
-        from .classify import classify
-
-        doc = rescore(classify(doc))
     if a.output:
         a.output.parent.mkdir(parents=True, exist_ok=True)
         a.output.write_text(
@@ -135,9 +126,9 @@ def main(argv: list[str] | None = None) -> int:
     print(text_report(doc, a.verbose))
     if not doc["summary"][
         "graded"
-    ]:  # all classified as information: no grade, not a perfect one
+    ]:  # every item is information (from the input file): no grade, not a perfect one
         print(
-            "error: nothing graded; every item was classified as information",
+            "error: nothing graded; every item is information (headings, notes, …)",
             file=sys.stderr,
         )
         return 2

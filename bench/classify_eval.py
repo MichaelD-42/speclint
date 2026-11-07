@@ -1,19 +1,21 @@
-"""Requirement vs information on items without an obligation verb: rule baseline vs GLiClass vs Haiku.
+"""Requirement vs information on items without an obligation verb: rule baseline vs Haiku.
 
 Items with shall/muss/... are requirements whatever a model says, so only items without one matter.
-The baseline is the plain rule "no obligation verb -> information". GLiClass runs if the `classify`
-extra is installed. Haiku labels come from a JSON file {id: "requirement"|"information"}, written by
-a Haiku subagent that saw only id, lang and text (bench/classify_eval_prompt.md).
-Usage: uv run --extra classify python bench/classify_eval.py [labels.csv] [--haiku haiku.json]
+The baseline is the plain rule "no obligation verb -> information". Haiku labels come from a JSON file
+{id: "requirement"|"information"}, written by a Haiku subagent that saw only id, lang and text
+(bench/classify_eval_prompt.md). GLiClass was dropped after it scored 50% here, no better than the
+baseline (see docs/backlog.md).
+Usage: uv run python bench/classify_eval.py [labels.csv] [--haiku haiku.json]
 """
 
 import csv
 import json
 import sys
-import time
 from pathlib import Path
 
-from speclint.classify import KINDS, OBLIGATION
+from speclint.checks import OBLIGATION
+
+KINDS = ["requirement", "information"]
 
 HERE = Path(__file__).parent
 
@@ -50,15 +52,6 @@ def main(path: Path, haiku: Path | None) -> None:
         f"{len(rows)} items without obligation verb, {sum(r['label'] == 'information' for r in rows)} information"
     )
     scores("baseline", rows, ["information"] * len(rows), None)
-    try:
-        from speclint.classify import top
-
-        top(["warm-up"], KINDS)  # model load and download outside the timing
-        t = time.perf_counter()
-        pred = [label for label, _ in top([r["text"] for r in rows], KINDS)]
-        scores("gliclass", rows, pred, time.perf_counter() - t)
-    except ImportError:
-        print("gliclass  skipped (uv sync --extra classify)")
     if haiku:
         labels = json.loads(haiku.read_text(encoding="utf-8"))
         missing = [r["id"] for r in rows if labels.get(r["id"]) not in KINDS]

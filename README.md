@@ -109,11 +109,16 @@ Anything else gets an `ears-nonconforming` warning naming the problem: no "shall
 
 ## How a review runs
 
-Three stages run in this order; only the first always runs.
+Two stages run in this order; only the first always runs.
 
 1. **Rules** (`speclint check`) produce every finding and every grade.
-2. **Classifier** (`--classify`, optional): a local GLiClass model labels each item as a requirement or as information, such as a heading, note or explanation. Information items are not graded or reviewed. Any item with an obligation verb (shall, must, should; muss, soll, darf) counts as a requirement, whatever the model says. When the input already says what an item is, as in a ReqIF object type ("Anforderung", "Information", "Überschrift", …), that decides instead and the classifier leaves the item alone. The attribute names and values it recognizes are in `rules.toml` under `[input]`, and so is the list of sphinx-needs types that are read (`need_types`; `test` or `impl` needs are skipped).
-3. **Reviewers** (`batches` → `speclint:req-reviewer` → `merge`, optional): Haiku subagents confirm or dismiss each finding and draft a question and a rewrite. Dismissed findings stop counting and the item is regraded.
+2. **Reviewers** (`batches` → `speclint:req-reviewer` → `merge`, optional): Haiku subagents confirm or dismiss each finding and draft a question and a rewrite. Dismissed findings stop counting and the item is regraded.
+
+Information items (headings, notes, explanations) are not graded or reviewed. What counts as information is decided in this order:
+
+1. Any item with an obligation verb (shall, must, should; muss, soll, darf) is a requirement.
+2. Otherwise the input file decides when it says what an item is: a ReqIF object type ("Anforderung", "Information", "Überschrift", …) or a heading. The attribute names and values it recognizes are in `rules.toml` under `[input]`, and so is the list of sphinx-needs types that are read (`need_types`; `test` or `impl` needs are skipped).
+3. Otherwise the Haiku reviewer labels the item during the review stage. Without a review, such items are graded like requirements.
 
 ## Quick start
 
@@ -124,25 +129,22 @@ You need [uv](https://docs.astral.sh/uv/). In Claude Code:
 /plugin install speclint@speclint
 ```
 
-Then ask Claude to check a spec. The skill runs all three stages and answers with how many items need clarification, the grade distribution and the worst requirements.
+Then ask Claude to check a spec. The skill runs both stages and answers with how many items need clarification, the grade distribution and the worst requirements.
 
 From a clone, the CLI works on its own:
 
 ```sh
-uv sync                                                  # --extra classify adds the GLiClass classifier
+uv sync
 uv run speclint check spec.reqifz export.csv -o results.json
-uv run speclint check spec.reqifz --classify -o results.json
 uv run speclint batches results.json --out review/       # batch files for reviewer agents
 uv run speclint merge results.json review/*.review.json  # apply reviews, regrade
 ```
 
-It reads ReqIF and ReqIFz in document order (the SPEC-HIERARCHY), with headings kept as information items. It also reads sphinx-needs `needs.json` builder output, in document order, skipping external needs. Plus CSV or TSV, where the ID and text columns are found by their headers or set with `--id-col` / `--text-col`. It also reads RST or Markdown with sphinx-needs directives (`.. req::` or MyST `{req}` with `:id:`) or `ID: text` lines. `--fail-on D` exits 1 when any graded item is D or worse, for CI. Input it cannot read exits 2, and so does a `--classify` run that labels every item as information, since nothing was graded.
-
-The classifier's first run downloads PyTorch (CPU) and the model, about 1.5 GB, and runs at 6 to 15 items/s. Its labels are a hint, not ground truth.
+It reads ReqIF and ReqIFz in document order (the SPEC-HIERARCHY), with headings kept as information items. It also reads sphinx-needs `needs.json` builder output, in document order, skipping external needs. Plus CSV or TSV, where the ID and text columns are found by their headers or set with `--id-col` / `--text-col`. It also reads RST or Markdown with sphinx-needs directives (`.. req::` or MyST `{req}` with `:id:`) or `ID: text` lines. `--fail-on D` exits 1 when any graded item is D or worse, for CI. Input it cannot read exits 2, and so does input whose items are all information, since nothing was graded.
 
 ## Benchmarks
 
-On PROMISE_exp (969 English requirements), the rules run at about 950 requirements/s: `uv run python bench/promise.py` prints the hits per rule and random samples to check precision by hand, because PROMISE has no quality labels. Zero-shot GLiClass scores 38% on its 12 type classes and 44–56% on functional vs non-functional, against a 51% majority baseline (`bench/classify_promise.py`). So speclint uses the model only to tell requirements from information. On requirement-vs-information for items without an obligation verb (`bench/classify_eval.py`, 70 EN/DE items), GLiClass scores 50%, no better than the plain rule "no obligation verb → information" (51%). A Haiku subagent scores 97%. `uv run python bench/timing.py` times each stage (read, rules, whole-spec rules, report, batches and merge, and classify if installed) at 100, 1,000 and 10,000 items. The rules run at about 1,100 items/s under `system`.
+On PROMISE_exp (969 English requirements), the rules run at about 950 requirements/s: `uv run python bench/promise.py` prints the hits per rule and random samples to check precision by hand, because PROMISE has no quality labels. Requirement vs information for items without an obligation verb is measured by `bench/classify_eval.py` on 70 EN/DE items. A Haiku subagent scores 97% there, against 51% for the plain rule "no obligation verb → information". A local zero-shot model (GLiClass) was tried and dropped: it scored 50% on this task, and 38% on PROMISE's 12 type classes. `uv run python bench/timing.py` times each stage (read, rules, whole-spec rules, report, batches and merge) at 100, 1,000 and 10,000 items. The rules run at about 1,100 items/s under `system`.
 
 ## Development
 

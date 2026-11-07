@@ -84,35 +84,50 @@ def test_merge_dismisses_rescores_and_rejects_garbage(tmp_path):
     )  # index out of range, bad verdict, unknown id, findings not a list, unreadable file
 
 
-def test_obligation_verb_overrides_classifier(monkeypatch):
-    from speclint import classify as c
+def haiku_doc():
+    p = item_only("customer")
+    reqs = [
+        Requirement("A", "Im Fehlerfall sollen die Daten ggf. gespeichert werden."),
+        Requirement("B", "Hinweis: Die Position liefert der Hall-Sensor."),
+        Requirement("C", "Türsteuerung", kind="information"),
+        Requirement("D", "Supply voltage range: 9 V to 16 V."),
+    ]
+    return report(check(reqs, "auto", p), p)
 
-    seen = []
-    monkeypatch.setattr(
-        c,
-        "top",
-        lambda texts, labels: seen.extend(texts) or [("information", 0.9)] * len(texts),
-    )
-    d = c.classify(
-        report(
-            check(
-                [
-                    Requirement(
-                        "A", "Im Fehlerfall sollen die Daten ggf. gespeichert werden."
-                    ),
-                    Requirement("B", "Hinweis: Die Position liefert der Hall-Sensor."),
-                ],
-                "de",
-            )
+
+def test_batches_ask_haiku_to_classify_only_undecided_items(tmp_path):
+    (path,) = batches(haiku_doc(), tmp_path)
+    items = {r["id"]: r for r in json.loads(path.read_text())["requirements"]}
+    assert set(items) == {"A", "B", "D"}  # C is information from the input
+    assert "classify" not in items["A"]  # obligation verb: always a requirement
+    assert items["B"]["classify"] is True and items["D"]["classify"] is True
+    assert items["B"]["findings"] == []
+
+
+def test_merge_applies_haiku_kind_only_where_undecided(tmp_path):
+    d = haiku_doc()
+    assert d["summary"]["graded"] == 3
+    review = tmp_path / "r.review.json"
+    review.write_text(
+        json.dumps(
+            {
+                "reviews": [
+                    {"key": 0, "id": "A", "findings": [], "kind": "information"},
+                    {"key": 1, "id": "B", "findings": [], "kind": "information"},
+                    {"key": 3, "id": "D", "findings": [], "kind": "requirement"},
+                    {"key": 2, "id": "C", "findings": [], "kind": "maybe"},
+                ]
+            }
         )
     )
-    assert [r["classification"]["kind"] for r in d["requirements"]] == [
-        "requirement",
-        "information",
-    ]
-    assert seen == [
-        "Hinweis: Die Position liefert der Hall-Sensor."
-    ]  # model only sees items without obligation verb
+    d, problems = merge(d, [review])
+    cls = [r.get("classification") for r in d["requirements"]]
+    assert "classification" not in d["requirements"][0]  # obligation verb wins
+    assert cls[1] == {"model": "haiku", "kind": "information"}
+    assert cls[2] == {"model": "input", "kind": "information", "score": 1.0}
+    assert cls[3] == {"model": "haiku", "kind": "requirement"}
+    assert d["summary"]["graded"] == 2
+    assert len(problems) == 2 and all("kind" in p for p in problems)
 
 
 def test_duplicate_ids_get_their_own_review(tmp_path):
@@ -257,21 +272,25 @@ def test_batch_size_below_1_is_a_usage_error(tmp_path):
     assert e.value.code == 2
 
 
-def test_nothing_graded_exits_2(tmp_path, monkeypatch, capsys):
-    from speclint import classify as c
+def test_nothing_graded_exits_2(tmp_path, capsys):
+    from test_readers import REQIF_META
 
-    monkeypatch.setattr(
-        c, "top", lambda texts, labels: [("information", 0.9)] * len(texts)
+    # keep only the heading object: everything is information
+    src = tmp_path / "h.reqif"
+    src.write_text(
+        REQIF_META.split("<SPEC-OBJECTS>")[0]
+        + "<SPEC-OBJECTS>"
+        + REQIF_META[REQIF_META.index('<SPEC-OBJECT IDENTIFIER="o-h">') :].split(
+            '<SPEC-OBJECT IDENTIFIER="o-x">'
+        )[0]
+        + "</SPEC-OBJECTS></REQ-IF-CONTENT></CORE-CONTENT></REQ-IF>",
+        encoding="utf-8",
     )
-    src = tmp_path / "s.md"
-    src.write_text("- US-1: As a driver I want the window to close quickly.\n")
-    assert main(["check", str(src), "--classify", "--fail-on", "D"]) == 2
+    assert main(["check", str(src), "--fail-on", "D"]) == 2
     assert "nothing graded" in capsys.readouterr().err.lower()
 
 
 def test_input_kind_is_classification_and_obligation_verb_wins():
-    from speclint import classify as c
-
     reqs = [
         Requirement("A", "Die Position liefert der Hall-Sensor.", kind="information"),
         Requirement(
@@ -285,10 +304,3 @@ def test_input_kind_is_classification_and_obligation_verb_wins():
     assert kinds[1]["kind"] == "requirement" and kinds[1]["model"] == "obligation verb"
     assert kinds[2] == {"model": "input", "kind": "requirement", "score": 1.0}
     assert d["summary"]["graded"] == 2
-    # --classify must not relabel items the input already decided
-    d = c.classify(d)
-    assert [r["classification"]["model"] for r in d["requirements"]] == [
-        "input",
-        "obligation verb",
-        "input",
-    ]

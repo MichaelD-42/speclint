@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:speclint:results:2",
   "title": "speclint results",
-  "description": "Output of `speclint check`, optionally extended by `--classify` and `speclint merge`. Each item is graded from the severity caps of its active findings; an item without active findings gets \"none\".",
+  "description": "Output of `speclint check`, optionally extended by `speclint merge`. Each item is graded from the severity caps of its active findings; an item without active findings gets \"none\".",
   "type": "object",
   "required": ["tool", "schema_version", "profile", "categories", "rules", "requirements", "summary"],
   "additionalProperties": false,
@@ -96,9 +96,9 @@
           "properties": { "pattern": { "$ref": "#/$defs/earsPattern" } }
         },
         "classification": {
-          "description": "Present with `check --classify`. Items with an obligation verb are always requirements (model \"obligation verb\").",
+          "description": "Requirement or information, when decided: model \"input\" (object type or heading in the input file), \"obligation verb\" (an obligation verb overrides an input \"information\"), or \"haiku\" (set by `speclint merge` for items neither decided).",
           "type": "object",
-          "required": ["model", "kind", "score"],
+          "required": ["model", "kind"],
           "additionalProperties": false,
           "properties": {
             "model": { "type": "string" },

@@ -25,6 +25,15 @@ Confirm when the matched text really makes the requirement vague, non-binding, o
 
 When unsure, confirm. Give a reason of at most 15 words.
 
+## Per requirement: kind, when asked
+
+A requirement with `"classify": true` has neither an obligation verb (shall, muss, …) nor a type from its source file, so you decide what it is. It may have no findings at all. Set `kind`:
+
+- `requirement`: a binding statement of what the system, a component or the supplier does, delivers or has, including a value it must meet. It counts even without "shall"/"muss", for example "The pump delivers 2 l/min at 3 bar" or "Lagertemperatur: −20 °C bis +60 °C".
+- `information`: everything that binds no one: headings, notes, rationale or background, explanations, examples, definitions and abbreviations, references to other documents, revision history, open points, comments, and descriptions of the existing situation.
+
+Leave `kind` out for requirements without `"classify"`. Information items are no longer graded, so when in doubt choose `requirement`.
+
 ## Per requirement: question and rewrite
 
 - `question`: one clarification question to the customer that resolves the confirmed findings, in the requirement's language (German: formal "Sie"). Be concrete: ask for the value, unit, tolerance, condition, actor or complete list that is missing. Combine several findings into one question. Empty string if nothing is confirmed.
@@ -39,7 +48,8 @@ Write exactly this JSON to the output path with the Write tool, nothing else, th
   {"key": 0, "id": "REQ-1",
    "findings": [{"index": 0, "rule": "vague-term", "verdict": "confirmed", "reason": "..."}],
    "question": "...",
-   "rewrite": "..."}
+   "rewrite": "..."},
+  {"key": 1, "id": "REQ-2", "findings": [], "kind": "information", "question": "", "rewrite": ""}
 ]}
 ```
 

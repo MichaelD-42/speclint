@@ -14,6 +14,12 @@ RULES = tomllib.loads(
 CATEGORIES: dict[str, str] = RULES["categories"]
 GRADES = ["A", "B", "C", "D", "F"]
 NONE = "none"  # no active findings: not a top grade, nothing was detected
+# An obligation verb makes an item a requirement, whatever the input or Haiku says: a weak requirement must never be hidden as information.
+OBLIGATION = re.compile(
+    r"\b(?:shall|must|should|is required to|are required to|muss|müssen|soll|sollen|sollte|sollten|darf|dürfen|"
+    r"ist zu|sind zu|hat zu|haben zu)\b",
+    re.IGNORECASE,
+)
 MODELS = {"en": "en_core_web_sm", "de": "de_core_news_sm"}
 
 _DE_HINTS = {
@@ -108,8 +114,6 @@ def grade(findings: list[dict]) -> str:
 
 def _input_kind(req: Requirement) -> dict:
     """The input file's own kind. An obligation verb overrides "information", as it overrides the classifier."""
-    from .classify import OBLIGATION  # classify only imports its model lazily
-
     if req.kind == "information" and OBLIGATION.search(req.text):
         return {"model": "obligation verb", "kind": "requirement", "score": 1.0}
     return {"model": "input", "kind": req.kind, "score": 1.0}

@@ -42,14 +42,15 @@
     - GLiClass: 50% accuracy, requirement recall 6% (2 of 34), 15 items/s.
     - Haiku: 97% accuracy, information precision 100% and recall 94%, requirement recall 100%. Its only misses are "the door module is mounted inside the door trim" (EN and DE), arguably a requirement.
   - Verdict so far: GLiClass adds nothing over the baseline; Haiku is far better. Caveat: the same author wrote the items, the labels and Haiku's prompt (bench/classify_eval_prompt.md), so the 97% is optimistic. Rerun on the real work items before deleting GLiClass.
-  - Running GLiClass here needs `HF_HOME` on a writable path; the sandbox blocks ~/.cache.
+  - Decision (2026-11-07, Michael): drop the local model and use Haiku only. Done (feat/readers): `--classify`, `classify.py`, the `classify` extra (torch, gliclass) and `bench/classify_promise.py` are removed.
+  - How it works now: an obligation verb, or the input file's kind, decides first, in every run. `batches` marks every other item `"classify": true`, including items without findings. The req-reviewer returns `kind`, and `merge` records `{"model": "haiku", "kind": …}`. A Haiku kind on an item already decided is rejected and reported. Rerun bench/classify_eval.py on the real items next week.
 - Timing benchmarks per stage (read, rules, whole-spec rules, classify, review) at 100 / 1k / 10k items. Done (feat/readers): `uv run python bench/timing.py [profile] [sizes…]`. Under `system` on 2026-11-07, in seconds, at 100 / 1k / 10k items:
   - read: 0.00 / 0.00 / 0.04
   - per-item rules: 0.09 / 0.93 / 6.56 (about 1,100–1,500 items/s)
   - whole-spec rules: 0.00 / 0.02 / 0.36 (the 10k run repeats PROMISE's texts about ten times, a worst case for duplicates)
   - report: 0.00 / 0.00 / 0.08
   - batches + merge: 0.00 / 0.02 / 0.47
-  - classify not timed yet: the extra (about 1.5 GB) isn't installed here. The Haiku review runs outside speclint.
+  - The Haiku review and classification run outside speclint and are not timed.
 - Fix: missing-tolerance flags proportions as missing tolerances ("for 97% of all leads", "used by 90% of novice users"). Done (feat/readers): a percentage followed by of/der/des/aller/von is skipped. On PROMISE that cuts it from 62 hits to 11, mostly uptime figures without "at least". New gap seen: "longer than" is not a bound word.
 
 ### 4. Profiles, new checks, EARS — done (branch feat/profiles-checks-ears, not merged)
