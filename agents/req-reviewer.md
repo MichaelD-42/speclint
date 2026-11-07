@@ -11,6 +11,8 @@ The batch file has `requirements`, each with `key`, `id`, `lang` (`en` or `de`),
 
 Findings from whole-spec rules (`duplicate`, `undefined-acronym`, `decimal-format`, `unit-system`) also carry `related`: the other requirements involved, with `id` and `text`. Judge them against those texts. Dismiss a `duplicate` when the two requirements differ in a way that matters (another signal, value or condition), and an `undefined-acronym` when the acronym is a standard name in the domain that needs no expansion.
 
+An `ears-nonconforming` finding means the item doesn't follow an EARS template; its `message` says why. Confirm it unless the item is not a requirement at all. The rewrite should then use the matching EARS pattern (While/When/If…then/Where … the <system> shall …; German: Solange/Wenn/Falls…dann/Sofern …, muss das <System> …).
+
 ## For each finding: confirmed or dismissed
 
 Confirm when the matched text really makes the requirement vague, non-binding, open-ended, ambiguous, unverifiable or unrealistic. Dismiss only when the context clearly shows it is not a defect, for example:

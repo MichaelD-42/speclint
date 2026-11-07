@@ -196,6 +196,27 @@ message = "Near-identical to another requirement; keep one"
 [acronyms]
 known = ["CAN", "LIN", "USB", "LED", "PC", "OK", "SHALL", "MUST", "SHOULD", "WILL", "MAY", "NOT", "AND", "OR", "IF", "THEN", "MUSS", "SOLL", "DARF", "KANN", "NICHT", "UND", "ODER", "WENN", "DANN"]
 
+
+# EARS conformance, only with --ears (speclint/ears.py). German keywords are speclint's own choice:
+# there is no standard German EARS keyword set.
+[rules.ears-nonconforming]
+category = "non_ambiguity"
+incose = "R1"
+severity = "warning"
+message = "Not an EARS pattern"
+
+[ears.en]
+keywords = { while = "state", when = "event", if = "unwanted", where = "optional" }
+modal = "shall"
+then = "then"
+main = "the <system> shall <response>"
+
+[ears.de]
+keywords = { solange = "state", wenn = "event", falls = "unwanted", sofern = "optional" }
+modal = "muss"
+then = "dann"
+main = "das <System> muss <Reaktion>"
+
 # Units for missing-tolerance (case-sensitive) and the words that make a value bounded.
 [tolerance]
 metric = ["m", "mm", "cm", "km", "µm", "km/h", "m/s", "kg", "g", "t", "°C", "bar", "mbar", "Pa", "kPa", "N", "Nm"]

@@ -63,13 +63,20 @@
           "type": "object",
           "additionalProperties": { "type": "integer", "minimum": 0 }
         },
-        "dismissed": { "type": "integer", "minimum": 0, "description": "Findings dismissed in review, over all items." }
+        "dismissed": { "type": "integer", "minimum": 0, "description": "Findings dismissed in review, over all items." },
+        "ears": {
+          "description": "With --ears: graded items per EARS pattern (patterns with no items are left out).",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/earsPattern" },
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        }
       }
     }
   },
   "$defs": {
     "severity": { "enum": ["error", "warning", "info"] },
     "grade": { "enum": ["A", "B", "C", "D", "F", "none"] },
+    "earsPattern": { "enum": ["ubiquitous", "event", "state", "unwanted", "optional", "complex", "non-conforming"] },
     "requirement": {
       "type": "object",
       "required": ["id", "source", "text", "lang", "findings", "grade"],
@@ -81,6 +88,13 @@
         "lang": { "enum": ["en", "de"] },
         "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
         "grade": { "$ref": "#/$defs/grade" },
+        "ears": {
+          "description": "Present with --ears.",
+          "type": "object",
+          "required": ["pattern"],
+          "additionalProperties": false,
+          "properties": { "pattern": { "$ref": "#/$defs/earsPattern" } }
+        },
         "classification": {
           "description": "Present with `check --classify`. Items with an obligation verb are always requirements (model \"obligation verb\").",
           "type": "object",

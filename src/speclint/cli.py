@@ -46,6 +46,8 @@ def text_report(doc: dict, verbose: bool) -> str:
         "  Findings per category:",
     ]
     out += [f"    {doc['categories'][k]:<14} {n}" for k, n in s["categories"].items()]
+    if "ears" in s:
+        out.append("  EARS: " + "  ".join(f"{p}:{n}" for p, n in s["ears"].items()))
     return "\n".join(out)
 
 

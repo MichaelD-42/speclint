@@ -76,9 +76,9 @@ class Finding:
     match: str
     start: int
     end: int
-    related: list[dict] = field(
-        default_factory=list
-    )  # whole-spec rules: [{"key", "id"}]
+    # whole-spec rules: the other affected items, [{"key", "id"}]
+    related: list[dict] = field(default_factory=list)
+    message: str = ""  # overrides the rule's message (EARS names what's missing)
 
     @property
     def spec(self) -> dict:
@@ -90,6 +90,7 @@ class Result:
     req: Requirement
     lang: str
     findings: list[Finding] = field(default_factory=list)
+    ears: str | None = None  # EARS pattern, with --ears only
 
 
 def grade(findings: list[dict]) -> str:
@@ -141,9 +142,11 @@ def report(results: list[Result], profile=None) -> dict:
                         "severity": sev[f.rule],
                         **{k: f.spec[k] for k in ("category", "incose", "message")},
                         **({"related": f.related} if f.related else {}),
+                        **({"message": f.message} if f.message else {}),
                     }
                     for f in r.findings
                 ],
+                **({"ears": {"pattern": r.ears}} if r.ears else {}),
             }
             for r in results
         ],
@@ -173,6 +176,11 @@ def rescore(doc: dict) -> dict:
         "rules": {k: sum(1 for f in active if f["rule"] == k) for k in doc["rules"]},
         "dismissed": sum(1 for r in reqs for f in r["findings"] if f.get("dismissed")),
     }
+    if doc["profile"]["ears"]:
+        from .ears import PATTERNS
+
+        seen = [r["ears"]["pattern"] for r in graded if "ears" in r]
+        doc["summary"]["ears"] = {p: n for p in PATTERNS if (n := seen.count(p))}
     return doc
 
 
@@ -412,7 +420,8 @@ def check_doc(doc, lang: str, active: set[str]) -> list[Finding]:
 
 
 def check(reqs: list[Requirement], lang: str = "auto", profile=None) -> list[Result]:
-    active = set((profile or _default_profile()).severities)
+    profile = profile or _default_profile()
+    active = set(profile.severities)
     langs = [detect_lang(r.text) if lang == "auto" else lang for r in reqs]
     majority = "de" if langs.count("de") > langs.count("en") else "en"
     results = [Result(r, code or majority) for r, code in zip(reqs, langs)]
@@ -425,4 +434,11 @@ def check(reqs: list[Requirement], lang: str = "auto", profile=None) -> list[Res
     from .spec_checks import check_spec  # imports Finding/Result from here
 
     check_spec(results, active)
+    if profile.ears:
+        from .ears import ears_pattern
+
+        for res in results:
+            res.ears, finding = ears_pattern(res.req.text, res.lang)
+            if finding:
+                res.findings.append(finding)
     return results

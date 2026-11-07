@@ -39,6 +39,8 @@ The first run creates the environment (spaCy plus two small language models, abo
 
    Pick the profile with `--profile`. `customer` (the default) is for a customer specification or Lastenheft: it finds what to ask the customer. `system` is for system or software requirements the team writes itself: it adds the style rules (one thought per requirement, no purpose phrases, "soll" counts as non-binding, …) and treats passives as warnings. A team's own profile is a TOML file passed as `--profile path.toml`. Grades from different profiles are not comparable: always name the profile in the answer.
 
+   Add `--ears` when the user's requirements are written, or are meant to be written, in EARS templates (While/When/If…then/Where; Solange/Wenn/Falls…dann/Sofern). It labels each item with its pattern and flags the ones that don't conform. Don't add it to a customer specification nobody wrote in EARS: every item would be flagged.
+
    Add `--classify` (and `--extra classify` after `uv run`) when the input is a customer specification that mixes binding requirements with headings, notes and explanations. It labels each item requirement or information with a local GLiClass model and excludes information from the grade. The first use downloads PyTorch (CPU) and the model, about 1.5 GB in total, and runs at roughly 6 to 15 items/s: tell the user before the first download. Its labels are a hint, not ground truth.
 
 3. **Review** (do this when the user wants clarification questions, a review, or asks what to ask the customer; skip for a quick lint):

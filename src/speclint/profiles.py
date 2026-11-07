@@ -29,6 +29,8 @@ def load_profile(spec: str = "customer", ears: bool = False) -> Profile:
         raise ValueError(
             f"unknown profile {spec!r} (built-in: {', '.join(RULES['profiles'])})"
         )
+    if ears:  # the profile's own severity table may still override it
+        data = {**data, "enable": [*data.get("enable", []), "ears-nonconforming"]}
     return Profile(spec, _resolve(spec, data, set()), ears)
 
 

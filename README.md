@@ -92,6 +92,21 @@ severity = { vague-term = "error" }
 
 `rules` replaces the inherited rule list, `enable` and `disable` add and remove rules, and `severity` overrides them. An unknown rule, severity or profile exits 2. The results JSON records the profile, because grades from different profiles aren't comparable.
 
+## EARS mode
+
+`--ears` adds a conformance check for the EARS templates on top of any profile (`--profile system --ears`). Each item gets one of six patterns, and the summary shows the mix:
+
+| Pattern | English | German |
+|---|---|---|
+| ubiquitous | The <system> shall <response> | Das <System> muss <Reaktion> |
+| event | When <trigger>, the <system> shall … | Wenn <Auslöser>, muss das <System> … |
+| state | While <state>, the <system> shall … | Solange <Zustand>, muss das <System> … |
+| unwanted | If <trigger>, then the <system> shall … | Falls <Auslöser>, dann muss das <System> … |
+| optional | Where <feature>, the <system> shall … | Sofern <Merkmal>, muss das <System> … |
+| complex | several preambles: While …, when …, the <system> shall … | Solange …, wenn …, muss das <System> … |
+
+Anything else gets an `ears-nonconforming` warning naming the problem: no "shall"/"muss" (EARS accepts no other modal verb), a condition after the response, "If" without "then", more than one response, or a preamble that doesn't start with a keyword. There is no standard German EARS keyword set; these keywords are speclint's own choice and sit in `rules.toml` under `[ears.de]`.
+
 ## How a review runs
 
 Three stages run in this order; only the first always runs.
