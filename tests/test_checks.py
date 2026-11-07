@@ -96,28 +96,59 @@ def test_detect_lang():
     assert detect_lang("The ECU shall store the data.") == "en"
 
 
-def test_grading():
+def f(rule, severity, dismissed=False):
+    return {"rule": rule, "severity": severity, "dismissed": dismissed}
+
+
+def test_grade_caps_and_pileup():
+    assert grade([]) == "none"
+    assert grade([f("passive-no-actor", "info")]) == "A"
+    assert grade([f("vague-term", "warning")]) == "B"
+    assert grade([f("escape-clause", "error")]) == "D"
+    assert grade([f("vague-term", "warning"), f("absolute", "warning")]) == "C"
+    assert grade([f("vague-term", "warning"), f("vague-term", "warning")]) == "B"
+    assert (
+        grade(
+            [
+                f("vague-term", "warning"),
+                f("passive-no-actor", "info"),
+                f("undefined-condition", "info"),
+            ]
+        )
+        == "B"
+    )
+    assert grade([f("escape-clause", "error"), f("vague-term", "warning")]) == "F"
+    assert grade([f(r, "warning") for r in ("a", "b", "c", "d", "e", "g")]) == "F"
+    assert grade([f("escape-clause", "error", dismissed=True)]) == "none"
+
+
+def test_item_grades_and_summary():
+    # no acronyms: undefined-acronym is part of the customer profile
     doc = report(
         check(
             [
-                Requirement("X", "The ECU shall start within 200 ms where possible."),
-                Requirement("Y", "The ECU shall start within 200 ms."),
-            ],
-            "en",
+                Requirement(
+                    "X", "The controller shall start within 200 ms where possible."
+                ),
+                Requirement("Y", "The controller shall start within 200 ms."),
+                Requirement("Z", "Dies muss mit ausreichender Genauigkeit erfolgen."),
+            ]
         )
     )
-    x = doc["requirements"][0]
-    assert x["score"] == 70 and x["grade"] == "C"
-    assert x["categories"]["completeness"] == 70 and x["categories"]["accuracy"] == 100
-    assert doc["summary"]["score"] == 85 and doc["summary"]["grade"] == "B+"
-    assert grade(100) == "A+" and grade(59) == "F"
+    assert [r["grade"] for r in doc["requirements"]] == ["D", "none", "C"]
+    s = doc["summary"]
+    assert s["needs_clarification"] == 2
+    assert s["grades"] == {"A": 0, "B": 0, "C": 1, "D": 1, "F": 0, "none": 1}
+    assert s["categories"]["completeness"] == 1
+    assert s["categories"]["non_ambiguity"] == 1
+    assert "score" not in s and "score" not in doc["requirements"][0]
 
 
 def test_information_items_are_not_graded():
     doc = report(
         check(
             [
-                Requirement("X", "The ECU shall start quickly."),
+                Requirement("X", "The controller shall start quickly."),
                 Requirement("Y", "This chapter is quickly read."),
             ],
             "en",
@@ -125,7 +156,7 @@ def test_information_items_are_not_graded():
     )
     doc["requirements"][1]["classification"] = {"kind": "information"}
     s = rescore(doc)["summary"]
-    assert (s["requirements"], s["graded"], s["score"]) == (2, 1, 85)
+    assert (s["requirements"], s["graded"], s["needs_clarification"]) == (2, 1, 1)
 
 
 def test_passive_span_does_not_hide_findings_inside_it():
@@ -170,9 +201,9 @@ def test_bound_on_first_value_does_not_cover_the_next(lang, text):
     ] == ["12 V"]
 
 
-def test_nothing_graded_gives_full_category_scores():
+def test_nothing_graded_gives_empty_summary():
     s = report(check([]))["summary"]
-    assert s["score"] == 100 and set(s["categories"].values()) == {100}
+    assert s["graded"] == 0 and set(s["categories"].values()) == {0}
 
 
 @pytest.mark.parametrize(
@@ -245,10 +276,3 @@ def test_german_agent_only_covers_its_own_passive():
 )
 def test_asymmetric_tolerance_is_bounded(lang, text):
     assert "missing-tolerance" not in rules(text, lang)
-
-
-def test_overall_grade_matches_the_reported_score():
-    reqs = [Requirement(str(i), "The ECU shall start quickly.") for i in range(99)]
-    reqs.append(Requirement("Z", "The ECU shall start quickly. Data shall be stored."))
-    s = report(check(reqs, "en"))["summary"]
-    assert (s["score"], s["grade"]) == (85.0, "B+")

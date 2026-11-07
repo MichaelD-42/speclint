@@ -12,17 +12,8 @@ RULES = tomllib.loads(
     (Path(__file__).parent / "rules.toml").read_text(encoding="utf-8")
 )
 CATEGORIES: dict[str, str] = RULES["categories"]
-PENALTY = {"error": 30, "warning": 15, "info": 3}
-GRADES = [
-    (95, "A+"),
-    (90, "A"),
-    (85, "B+"),
-    (80, "B"),
-    (75, "C+"),
-    (70, "C"),
-    (60, "D"),
-    (0, "F"),
-]
+GRADES = ["A", "B", "C", "D", "F"]
+NONE = "none"  # no active findings: not a top grade, nothing was detected
 MODELS = {"en": "en_core_web_sm", "de": "de_core_news_sm"}
 
 _DE_HINTS = {
@@ -98,29 +89,23 @@ class Result:
     findings: list[Finding] = field(default_factory=list)
 
 
-def grade(score: float) -> str:
-    return next(g for limit, g in GRADES if score >= limit)
-
-
-def score(findings: list[dict], category: str | None = None) -> int:
-    """Score from report findings; findings dismissed by a review don't count."""
-    return max(
-        0,
-        100
-        - sum(
-            PENALTY[f["severity"]]
-            for f in findings
-            if not f.get("dismissed")
-            and (category is None or f["category"] == category)
-        ),
-    )
+def grade(findings: list[dict]) -> str:
+    """Worst severity cap among active findings, one letter lower per extra distinct warning/error rule."""
+    active = [f for f in findings if not f.get("dismissed")]
+    if not active:
+        return NONE
+    g = RULES["grading"]
+    base = max(GRADES.index(g["caps"][f["severity"]]) for f in active)
+    hard = {f["rule"] for f in active if f["severity"] != "info"}
+    steps = max(0, len(hard) - 1) * g["pileup_step"]
+    return GRADES[min(base + steps, len(GRADES) - 1)]
 
 
 def report(results: list[Result]) -> dict:
     """The results document: what the CLI writes, reviewers annotate and the viewer shows."""
     doc = {
         "tool": "speclint",
-        "schema_version": 1,
+        "schema_version": 2,
         "categories": CATEGORIES,
         "rules": {
             k: {f: v[f] for f in ("category", "incose", "severity", "message")}
@@ -153,33 +138,24 @@ def report(results: list[Result]) -> dict:
 
 
 def rescore(doc: dict) -> dict:
-    """(Re)compute per-requirement and summary scores. Items classified as information are not graded."""
+    """(Re)grade every item and rebuild the summary. Items classified as information are not graded."""
     reqs = doc["requirements"]
     for r in reqs:
-        r["score"] = score(r["findings"])
-        r["grade"] = grade(r["score"])
-        r["categories"] = {k: score(r["findings"], k) for k in CATEGORIES}
+        r["grade"] = grade(r["findings"])
     graded = [
         r for r in reqs if r.get("classification", {}).get("kind") != "information"
     ]
-    # round before grading so the grade, the printed score and --fail-under agree
-    overall = round(sum(r["score"] for r in graded) / len(graded), 1) if graded else 100
     active = [f for r in graded for f in r["findings"] if not f.get("dismissed")]
     doc["summary"] = {
         "requirements": len(reqs),
         "graded": len(graded),
-        "with_findings": sum(
-            1 for r in graded if any(not f.get("dismissed") for f in r["findings"])
-        ),
-        "score": overall,
-        "grade": grade(overall),
-        "categories": {
-            k: round(sum(r["categories"][k] for r in graded) / len(graded), 1)
-            if graded
-            else 100
-            for k in CATEGORIES
+        "needs_clarification": sum(1 for r in graded if r["grade"] != NONE),
+        "grades": {
+            g: sum(1 for r in graded if r["grade"] == g) for g in GRADES + [NONE]
         },
-        "grades": {g: sum(1 for r in graded if r["grade"] == g) for _, g in GRADES},
+        "categories": {
+            k: sum(1 for f in active if f["category"] == k) for k in CATEGORIES
+        },
         "rules": {k: sum(1 for f in active if f["rule"] == k) for k in RULES["rules"]},
         "dismissed": sum(1 for r in reqs for f in r["findings"] if f.get("dismissed")),
     }

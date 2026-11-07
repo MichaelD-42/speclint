@@ -45,7 +45,7 @@ def main(samples: int = 5) -> None:
     elapsed = time.perf_counter() - t
     s = report(results)["summary"]
     print(
-        f"{len(results)} requirements in {elapsed:.2f}s ({len(results) / elapsed:.0f}/s). Overall {s['grade']} ({s['score']:.0f}%)"
+        f"{len(results)} requirements in {elapsed:.2f}s ({len(results) / elapsed:.0f}/s). Grades {s['grades']}"
     )
     print(f"{sum(1 for r in results if r.findings)} with findings\n")
 

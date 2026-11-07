@@ -29,7 +29,7 @@ def test_batches_contain_only_items_with_findings(tmp_path):
 
 def test_merge_dismisses_rescores_and_rejects_garbage(tmp_path):
     d = doc()
-    assert d["requirements"][0]["score"] == 85
+    assert d["requirements"][0]["grade"] == "B"
     review = tmp_path / "r.review.json"
     review.write_text(
         json.dumps(
@@ -69,7 +69,7 @@ def test_merge_dismisses_rescores_and_rejects_garbage(tmp_path):
     broken.write_text("{not json")
     d, problems = merge(d, [review, broken])
     a, b = d["requirements"][0], d["requirements"][1]
-    assert a["score"] == 100 and a["findings"][0]["dismissed"]
+    assert a["grade"] == "none" and a["findings"][0]["dismissed"]
     assert (
         b["review"] == {"question": "Which max. response time?"}
         and b["findings"][0]["dismissed"] is False
@@ -230,12 +230,19 @@ def test_broken_input_exits_2(tmp_path, capsys, name, content):
     assert "error:" in capsys.readouterr().err
 
 
-def test_fail_under_exits_1_and_output_folder_is_created(tmp_path):
+def test_fail_on_exits_1_and_output_folder_is_created(tmp_path):
     src = tmp_path / "s.md"
-    src.write_text("- REQ-1: The ECU shall start quickly.\n")
+    src.write_text("- REQ-1: The controller shall start quickly.\n")
     out = tmp_path / "new" / "results.json"
-    assert main(["check", str(src), "-o", str(out), "--fail-under", "90"]) == 1
+    assert main(["check", str(src), "-o", str(out), "--fail-on", "B"]) == 1
+    assert main(["check", str(src), "--fail-on", "C"]) == 0
     assert out.exists()
+
+
+def test_fail_on_ignores_items_without_findings(tmp_path):
+    src = tmp_path / "s.md"
+    src.write_text("- REQ-1: The controller shall start within 200 ms.\n")
+    assert main(["check", str(src), "--fail-on", "A"]) == 0
 
 
 def test_batch_size_below_1_is_a_usage_error(tmp_path):
@@ -254,5 +261,5 @@ def test_nothing_graded_exits_2(tmp_path, monkeypatch, capsys):
     )
     src = tmp_path / "s.md"
     src.write_text("- US-1: As a driver I want the window to close quickly.\n")
-    assert main(["check", str(src), "--classify", "--fail-under", "80"]) == 2
+    assert main(["check", str(src), "--classify", "--fail-on", "D"]) == 2
     assert "nothing graded" in capsys.readouterr().err.lower()

@@ -3,6 +3,12 @@
 # lemmas:  single words matched on the token or its lemma (catches German inflection: ausreichende -> ausreichend).
 # severity: error | warning | info
 
+# Grade caps: an item gets the worst cap among its active findings, then one letter lower
+# per distinct warning/error rule beyond the first (floor F). No findings → "none".
+[grading]
+caps = { error = "D", warning = "B", info = "A" }
+pileup_step = 1
+
 [categories]
 accuracy = "Accuracy"
 completeness = "Completeness"

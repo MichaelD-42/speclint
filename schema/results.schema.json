@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:speclint:results:1",
+  "$id": "urn:speclint:results:2",
   "title": "speclint results",
-  "description": "Output of `speclint check`, optionally extended by `--classify` and `speclint merge`. Scores are integers 0-100 per requirement; summary scores are means over graded items.",
+  "description": "Output of `speclint check`, optionally extended by `--classify` and `speclint merge`. Each item is graded from the severity caps of its active findings; an item without active findings gets \"none\".",
   "type": "object",
   "required": ["tool", "schema_version", "categories", "rules", "requirements", "summary"],
   "additionalProperties": false,
   "properties": {
     "tool": { "const": "speclint" },
-    "schema_version": { "const": 1 },
+    "schema_version": { "const": 2 },
     "categories": {
       "description": "Category key to display name.",
       "type": "object",
@@ -35,17 +35,15 @@
     },
     "summary": {
       "type": "object",
-      "required": ["requirements", "graded", "with_findings", "score", "grade", "categories", "grades", "rules", "dismissed"],
+      "required": ["requirements", "graded", "needs_clarification", "grades", "categories", "rules", "dismissed"],
       "additionalProperties": false,
       "properties": {
         "requirements": { "type": "integer", "minimum": 0, "description": "All items read." },
         "graded": { "type": "integer", "minimum": 0, "description": "Items not classified as information." },
-        "with_findings": { "type": "integer", "minimum": 0, "description": "Graded items with at least one finding that is not dismissed." },
-        "score": { "$ref": "#/$defs/meanScore" },
-        "grade": { "$ref": "#/$defs/grade" },
-        "categories": { "type": "object", "additionalProperties": { "$ref": "#/$defs/meanScore" } },
+        "needs_clarification": { "type": "integer", "minimum": 0, "description": "Graded items with at least one finding that is not dismissed." },
+        "categories": { "description": "Findings per category over graded items, dismissed findings excluded.", "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
         "grades": {
-          "description": "Number of graded items per grade.",
+          "description": "Number of graded items per grade, \"none\" included.",
           "type": "object",
           "propertyNames": { "$ref": "#/$defs/grade" },
           "additionalProperties": { "type": "integer", "minimum": 0 }
@@ -61,12 +59,10 @@
   },
   "$defs": {
     "severity": { "enum": ["error", "warning", "info"] },
-    "grade": { "enum": ["A+", "A", "B+", "B", "C+", "C", "D", "F"] },
-    "score": { "type": "integer", "minimum": 0, "maximum": 100 },
-    "meanScore": { "type": "number", "minimum": 0, "maximum": 100 },
+    "grade": { "enum": ["A", "B", "C", "D", "F", "none"] },
     "requirement": {
       "type": "object",
-      "required": ["id", "source", "text", "lang", "findings", "score", "grade", "categories"],
+      "required": ["id", "source", "text", "lang", "findings", "grade"],
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string" },
@@ -74,9 +70,7 @@
         "text": { "type": "string" },
         "lang": { "enum": ["en", "de"] },
         "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
-        "score": { "$ref": "#/$defs/score" },
         "grade": { "$ref": "#/$defs/grade" },
-        "categories": { "type": "object", "additionalProperties": { "$ref": "#/$defs/score" } },
         "classification": {
           "description": "Present with `check --classify`. Items with an obligation verb are always requirements (model \"obligation verb\").",
           "type": "object",
@@ -112,7 +106,7 @@
         "category": { "type": "string" },
         "incose": { "type": "string" },
         "message": { "type": "string" },
-        "dismissed": { "type": "boolean", "description": "Set by review; dismissed findings do not count towards scores." },
+        "dismissed": { "type": "boolean", "description": "Set by review; dismissed findings do not count towards the grade." },
         "review_reason": { "type": "string" }
       }
     }
