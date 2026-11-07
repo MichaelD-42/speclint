@@ -201,6 +201,8 @@ def detect_lang(text: str) -> str | None:
     """None when the hint words don't decide (terse items like "Versorgungsspannung höchstens 16 V.")."""
     words = re.findall(r"\w+", text.lower())
     de, en = sum(w in _DE_HINTS for w in words), sum(w in _EN_HINTS for w in words)
+    if de == en and re.search(r"[äöüß]", text.lower()):
+        return "de"  # umlauts decide terse items the hint words can't
     return "de" if de > en else "en" if en > de else None
 
 
@@ -321,6 +323,7 @@ def _oblique(text: str) -> list[Finding]:
             or len(parts) > 2
             or word.replace("/", "").isupper()  # I/O, TCP/IP: fixed technical names
             or "." in parts[0]  # host/path: www.example.com/docs
+            or parts[0].endswith("-")  # German pair: Ein-/Ausgänge
             or any(p[:1].isdigit() for p in parts)
         ):
             continue
@@ -334,6 +337,14 @@ def _parenthetical(text: str) -> list[Finding]:
         for m in _PARENS.finditer(text)
         if len(m.group(1).split()) > 3
     ]
+
+
+def _clause_verb(modal):
+    """The verb a modal governs, so the span starts at the modal: EN head (aux), DE oc child.
+    Falls back to the modal alone (German "und darf …" hangs the modal off the conjunction)."""
+    if oc := next((c for c in modal.children if c.dep_ == "oc"), None):
+        return oc
+    return modal.head if modal.head.i > modal.i else modal
 
 
 def _modals(doc, lang: str, active: set[str]) -> list[Finding]:
@@ -351,7 +362,7 @@ def _modals(doc, lang: str, active: set[str]) -> list[Finding]:
     if "single-thought" in active:
         words = set(RULES["rules"]["single-thought"][lang]["obligation"])
         out += [
-            _span("single-thought", doc, t, t.head)
+            _span("single-thought", doc, t, _clause_verb(t))
             for t in [t for t in doc if is_modal(t, words)][1:]
         ]
     for rule in ("weak-obligation", "soll-obligation"):

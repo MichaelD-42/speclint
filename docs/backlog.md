@@ -73,7 +73,7 @@ Hits (items) and true positives in the sample:
 
 All rules with enough hits pass the 14/20 bar, so none was removed from the profiles. Throughput: 905 req/s under `system` (was 964 with nine rules). The duplicate check now uses an exact prefix-filter join instead of O(n²) pairs, and the acronym check makes a single pass.
 
-### Deferred from the final branch review (2026-11-07)
+### Deferred from the final branch review (2026-11-07) — all five fixed (feat/readers)
 
 - Bilingual spec: a short German item whose language detection is a tie (or where English is the majority) is treated as English. It then gets decimal-format and the EARS message "no shall".
 - In German, the single-thought finding starts at the conjunction ("und darf") instead of the second modal.
