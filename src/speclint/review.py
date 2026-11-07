@@ -123,6 +123,6 @@ def main_merge(results: Path, review_files: list[Path]) -> int:
     reviewed = sum(1 for r in doc["requirements"] if "review" in r)
     print(
         f"Merged {reviewed} reviews, {doc['summary']['dismissed']} findings dismissed. "
-        f"Overall {doc['summary']['grade']} ({doc['summary']['score']}%)"
+        f"{doc['summary']['needs_clarification']} of {doc['summary']['graded']} graded items need clarification."
     )
     return 0

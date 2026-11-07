@@ -176,7 +176,9 @@ def rescore(doc: dict) -> dict:
         "rules": {k: sum(1 for f in active if f["rule"] == k) for k in doc["rules"]},
         "dismissed": sum(1 for r in reqs for f in r["findings"] if f.get("dismissed")),
     }
-    if doc["profile"]["ears"]:
+    if doc.get("profile", {}).get(
+        "ears"
+    ):  # results written before schema v2 have no profile
         from .ears import PATTERNS
 
         seen = [r["ears"]["pattern"] for r in graded if "ears" in r]
@@ -303,6 +305,8 @@ def _oblique(text: str) -> list[Finding]:
             word.lower() in skip
             or "//" in word
             or len(parts) > 2
+            or word.replace("/", "").isupper()  # I/O, TCP/IP: fixed technical names
+            or "." in parts[0]  # host/path: www.example.com/docs
             or any(p[:1].isdigit() for p in parts)
         ):
             continue

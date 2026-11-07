@@ -75,9 +75,10 @@ def _duplicates(results) -> None:
 
 def _acronyms(results) -> None:
     t = RULES["tolerance"]
-    known = (
-        set(RULES["acronyms"]["known"]) | set(t["units"]) | {r.req.id for r in results}
-    )
+    # IDs and their letter prefixes (LH in "LH-001") are references, not acronyms
+    ids = {r.req.id for r in results}
+    prefixes = {p for i in ids for p in re.findall(r"[A-Za-zÄÖÜäöü]+", i)}
+    known = set(RULES["acronyms"]["known"]) | set(t["units"]) | ids | prefixes
     texts = [r.req.text for r in results]
     hits = defaultdict(lambda: defaultdict(list))
     for key, text in enumerate(texts):

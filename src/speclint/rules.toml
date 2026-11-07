@@ -194,7 +194,7 @@ message = "Near-identical to another requirement; keep one"
 # All-caps words that need no expansion: common bus/hardware acronyms and capitalized keywords.
 # The units in [tolerance] and the item IDs of the run are never acronyms either.
 [acronyms]
-known = ["CAN", "LIN", "USB", "LED", "PC", "OK", "SHALL", "MUST", "SHOULD", "WILL", "MAY", "NOT", "AND", "OR", "IF", "THEN", "MUSS", "SOLL", "DARF", "KANN", "NICHT", "UND", "ODER", "WENN", "DANN"]
+known = ["CAN", "LIN", "USB", "LED", "PC", "OK", "ON", "OFF", "EIN", "AUS", "KEIN", "KEINE", "NUR", "SHALL", "MUST", "SHOULD", "WILL", "MAY", "NOT", "AND", "OR", "IF", "THEN", "MUSS", "SOLL", "DARF", "KANN", "NICHT", "UND", "ODER", "WENN", "DANN"]
 
 
 # EARS conformance, only with --ears (speclint/ears.py). German keywords are speclint's own choice:
@@ -207,13 +207,13 @@ message = "Not an EARS pattern"
 
 [ears.en]
 keywords = { while = "state", when = "event", if = "unwanted", where = "optional" }
-modal = "shall"
+modals = ["shall"]
 then = "then"
 main = "the <system> shall <response>"
 
 [ears.de]
 keywords = { solange = "state", wenn = "event", falls = "unwanted", sofern = "optional" }
-modal = "muss"
+modals = ["muss", "müssen"]
 then = "dann"
 main = "das <System> muss <Reaktion>"
 

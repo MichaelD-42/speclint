@@ -31,7 +31,12 @@ def load_profile(spec: str = "customer", ears: bool = False) -> Profile:
         )
     if ears:  # the profile's own severity table may still override it
         data = {**data, "enable": [*data.get("enable", []), "ears-nonconforming"]}
-    return Profile(spec, _resolve(spec, data, set()), ears)
+    sev = _resolve(spec, data, set())
+    if ears:  # --ears wins over a profile that disables the rule
+        sev.setdefault(
+            "ears-nonconforming", RULES["rules"]["ears-nonconforming"]["severity"]
+        )
+    return Profile(spec, sev, ears)
 
 
 def _resolve(name: str, data: dict, seen: set[str]) -> dict[str, str]:

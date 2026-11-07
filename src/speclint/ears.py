@@ -20,7 +20,8 @@ PATTERNS = [
 ]
 RULE = "ears-nonconforming"
 _TRAILING = {
-    "en": ["when", "while", "if", "where", "during", "after", "before", "unless"],
+    # only words that open a condition: "if"/"where" often mean whether/in which, "after each cycle" is a time
+    "en": ["when", "while"],
     "de": ["wenn", "solange", "falls", "sofern", "sobald"],
 }
 
@@ -28,7 +29,8 @@ _TRAILING = {
 @cache
 def _rx(lang: str) -> dict[str, re.Pattern]:
     e = RULES["ears"][lang]
-    modal, then = re.escape(e["modal"]), re.escape(e["then"])
+    modal = "(?:" + "|".join(map(re.escape, e["modals"])) + ")"
+    then = re.escape(e["then"])
     if lang == "en":
         main = [rf"(?:^|,\s*)(?:({then})\s+)?the\s+[^,]+?\s+{modal}\b"]
     else:  # "Das System muss …" or, after a preamble, ", (dann) muss das System …"
@@ -56,13 +58,13 @@ def ears_pattern(text: str, lang: str) -> tuple[str, Finding | None]:
         return _bad(
             text,
             *at_first,
-            f'No "{e["modal"]}": EARS states each requirement with "{e["modal"]}"',
+            f'No "{e["modals"][0]}": EARS states each requirement with "{e["modals"][0]}"',
         )
     if len(modals) > 1:
         return _bad(
             text,
             *modals[1].span(),
-            f'More than one "{e["modal"]}": one response per requirement',
+            f'More than one "{e["modals"][0]}": one response per requirement',
         )
     main = next((m for p in rx["main"] if (m := p.search(text))), None)
     if main is None:
@@ -79,7 +81,9 @@ def ears_pattern(text: str, lang: str) -> tuple[str, Finding | None]:
             )
         return "ubiquitous", None
     found = []
-    for clause in re.finditer(r"[^,]+", preamble):
+    for clause in re.finditer(
+        r"(?:[^,]|(?<=\d),(?=\d))+", preamble
+    ):  # 1,5 V is one clause
         word = re.match(r"\s*(\w+)", clause.group(0))
         if not word:
             continue
