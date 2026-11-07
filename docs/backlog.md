@@ -88,7 +88,16 @@ All rules with enough hits pass the 14/20 bar, so none was removed from the prof
 - Oblique flags German hyphen pairs ("Ein-/Ausgänge", "Lade-/Entladestrom").
 - "ECU-Software muss …" at the start of an item counts as a glossary expansion of ECU.
 
-## Later: classification (Haiku, configurable per profile)
+## Classification (Haiku, configurable per profile) — first round done (branch feat/haiku-labels, not merged)
+
+Built: labels domain, safety, security, type, level, verification and solution (R31), defined in rules.toml `[labels]`. Profiles pick them (customer: domain, safety, security; system: all). A stated ASIL/SIL is read into `integrity`, and merge counts safety-relevant items without one. Live run on examples/lastenheft.md (2026-11-07): 11 items. LH-000 and LH-009 became information; the 9 requirements got valid labels. Only LH-007 (anti-pinch) was marked safety-relevant, and it was flagged for stating no ASIL. 4 of 9 came back safety "unclear". There were no merge warnings.
+
+Still open:
+- Label accuracy is unmeasured. Extend bench/classify_eval.py (or a sibling) with gold labels from the work data.
+- Contradictions between near-duplicate pairs (C11): not built.
+- EARS rewrite: the reviewer already writes a rewrite and is told to use the EARS pattern for ears-nonconforming findings. No separate task needed unless the eval shows otherwise.
+
+Original list:
 
 Labels only; they never change scores.
 
