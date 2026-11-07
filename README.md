@@ -142,7 +142,7 @@ The classifier's first run downloads PyTorch (CPU) and the model, about 1.5 GB, 
 
 ## Benchmarks
 
-On PROMISE_exp (969 English requirements), the rules run at about 950 requirements/s: `uv run python bench/promise.py` prints the hits per rule and random samples to check precision by hand, because PROMISE has no quality labels. Zero-shot GLiClass scores 38% on its 12 type classes and 44–56% on functional vs non-functional, against a 51% majority baseline (`bench/classify_promise.py`). So speclint uses the model only to tell requirements from information.
+On PROMISE_exp (969 English requirements), the rules run at about 950 requirements/s: `uv run python bench/promise.py` prints the hits per rule and random samples to check precision by hand, because PROMISE has no quality labels. Zero-shot GLiClass scores 38% on its 12 type classes and 44–56% on functional vs non-functional, against a 51% majority baseline (`bench/classify_promise.py`). So speclint uses the model only to tell requirements from information. `uv run python bench/timing.py` times each stage (read, rules, whole-spec rules, report, batches and merge, and classify if installed) at 100, 1,000 and 10,000 items. The rules run at about 1,100 items/s under `system`.
 
 ## Development
 

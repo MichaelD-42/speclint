@@ -37,7 +37,13 @@
 
 - Eval harness: labeled EN/DE automotive-style items, precision/recall per rule and per profile. Prerequisite for tuning rules and profiles.
 - Classifier test: on labeled requirement/information items, compare GLiClass vs the plain rule "no obligation verb → information" vs Haiku. If GLiClass adds nothing over the baseline, drop it (and the 1.5 GB extra) and use Haiku only.
-- Timing benchmarks per stage (read, rules, whole-spec rules, classify, review) at 100 / 1k / 10k items. Watch the O(n²) duplicate check.
+- Timing benchmarks per stage (read, rules, whole-spec rules, classify, review) at 100 / 1k / 10k items. Done (feat/readers): `uv run python bench/timing.py [profile] [sizes…]`. Under `system` on 2026-11-07, in seconds, at 100 / 1k / 10k items:
+  - read: 0.00 / 0.00 / 0.04
+  - per-item rules: 0.09 / 0.93 / 6.56 (about 1,100–1,500 items/s)
+  - whole-spec rules: 0.00 / 0.02 / 0.36 (the 10k run repeats PROMISE's texts about ten times, a worst case for duplicates)
+  - report: 0.00 / 0.00 / 0.08
+  - batches + merge: 0.00 / 0.02 / 0.47
+  - classify not timed yet: the extra (about 1.5 GB) isn't installed here. The Haiku review runs outside speclint.
 - Fix: missing-tolerance flags proportions as missing tolerances ("for 97% of all leads", "used by 90% of novice users"). Done (feat/readers): a percentage followed by of/der/des/aller/von is skipped. On PROMISE that cuts it from 62 hits to 11, mostly uptime figures without "at least". New gap seen: "longer than" is not a bound word.
 
 ### 4. Profiles, new checks, EARS — done (branch feat/profiles-checks-ears, not merged)
