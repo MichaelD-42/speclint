@@ -120,6 +120,22 @@ Information items (headings, notes, explanations) are not graded or reviewed. Wh
 2. Otherwise the input file decides when it says what an item is: a ReqIF object type ("Anforderung", "Information", "Überschrift", …) or a heading. The attribute names and values it recognizes are in `rules.toml` under `[input]`, and so is the list of sphinx-needs types that are read (`need_types`; `test` or `impl` needs are skipped).
 3. Otherwise the Haiku reviewer labels the item during the review stage. Without a review, such items are graded like requirements.
 
+## Labels
+
+During the review, the Haiku reviewer also labels each requirement. Labels describe a requirement and never change its grade. The profile picks which labels it asks for (`labels = [...]`); the names, allowed values and definitions live in `rules.toml` under `[labels]`:
+
+| Label | Values | `customer` | `system` |
+|---|---|---|---|
+| domain | ME, EE, SW, SYS (one or more) | ✓ | ✓ |
+| safety | yes / no / unclear: functional-safety relevant | ✓ | ✓ |
+| security | yes / no / unclear: cybersecurity relevant | ✓ | ✓ |
+| type | functional, performance, interface, constraint, safety, security | | ✓ |
+| level | stakeholder, system, component | | ✓ |
+| verification | test, analysis, inspection, demonstration, not verifiable | | ✓ |
+| solution | free / prescribed (INCOSE R31) | | ✓ |
+
+Safety and security are relevance flags only. An ASIL comes from the hazard analysis and a CAL from the TARA, not from the requirement text, so the reviewer never assigns one. speclint does read a level the text states ("ASIL B", "ASIL B(D)", "SIL 2") into `integrity`, and `merge` reports how many safety-relevant items state none. With labels on, `batches` sends every requirement to review, not only those with findings.
+
 ## Quick start
 
 You need [uv](https://docs.astral.sh/uv/). In Claude Code:

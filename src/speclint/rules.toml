@@ -229,10 +229,12 @@ de.bounds = ["max", "max.", "maximal", "höchstens", "min", "min.", "mindestens"
 # Profiles: which rules run, at which severity (= grade cap). `--profile <name|file.toml>`; a custom file
 # uses a [profile] table with the same keys. Resolution: extends, then rules (replace), enable, disable, severity.
 [profiles.customer]
+labels = ["domain", "safety", "security"]
 rules = ["vague-term", "missing-tolerance", "escape-clause", "open-ended", "undefined-condition", "ambiguous-combinator", "unresolved-reference", "passive-no-actor", "absolute", "temporal-word", "weak-obligation", "undefined-acronym", "duplicate"]
 
 [profiles.system]
 extends = "customer"
+labels = ["domain", "safety", "security", "type", "level", "verification", "solution"]
 enable = ["purpose-phrase", "superfluous-infinitive", "clause-combinator", "single-thought", "soll-obligation", "oblique", "parenthetical", "decimal-format", "unit-system"]
 severity = { passive-no-actor = "warning" }
 
@@ -244,3 +246,35 @@ need_types = ["req", "spec", "requirement", "specification"]
 kind_attributes = ["Object Type", "Objekttyp", "Objektart", "Type", "Typ", "Anforderungstyp", "Requirement Type"]
 requirement = ["requirement", "anforderung", "req", "functional requirement", "non-functional requirement", "funktionale anforderung", "nicht-funktionale anforderung"]
 information = ["information", "info", "heading", "überschrift", "kapitel", "comment", "kommentar", "note", "hinweis", "explanation", "erläuterung", "title", "titel"]
+
+# Labels the Haiku reviewer sets per requirement (profiles pick them with `labels = [...]`).
+# They describe a requirement and never change its grade. `values` are the allowed answers;
+# `multi = true` takes a list. The definitions go into every batch file, so the reviewer needs no other source.
+[labels.domain]
+values = ["ME", "EE", "SW", "SYS"]
+multi = true
+description = "Engineering disciplines that implement it: ME mechanical, EE electrical/electronic hardware, SW software, SYS system level (spans disciplines or not yet allocated). One or more."
+
+[labels.safety]
+values = ["yes", "no", "unclear"]
+description = "Functional-safety relevant: a failure could harm people (ISO 26262 / IEC 61508 context), e.g. braking, steering, anti-pinch, airbag, high voltage. Judge relevance only; never assign an ASIL or SIL."
+
+[labels.security]
+values = ["yes", "no", "unclear"]
+description = "Cybersecurity relevant (ISO/SAE 21434): access control, authentication, encryption, diagnostics or update access, external interfaces, protection against manipulation. Judge relevance only; never assign a CAL."
+
+[labels.type]
+values = ["functional", "performance", "interface", "constraint", "safety", "security"]
+description = "Main kind of requirement: functional (a behaviour), performance (how fast, how much, how precise), interface (signals, protocols, connectors), constraint (design, environment, standards, process, delivery), safety, security."
+
+[labels.level]
+values = ["stakeholder", "system", "component"]
+description = "Level of the requirement: stakeholder (a need, user or customer view), system (the whole product's behaviour), component (one part, unit or software module)."
+
+[labels.verification]
+values = ["test", "analysis", "inspection", "demonstration", "not verifiable"]
+description = "Best way to verify it as written; \"not verifiable\" when no pass/fail criterion follows from the text."
+
+[labels.solution]
+values = ["free", "prescribed"]
+description = "INCOSE R31: \"prescribed\" when it dictates an implementation (a technology, component or design) instead of the outcome; \"free\" otherwise."

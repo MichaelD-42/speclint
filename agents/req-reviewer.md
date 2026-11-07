@@ -34,6 +34,10 @@ A requirement with `"classify": true` has neither an obligation verb (shall, mus
 
 Leave `kind` out for requirements without `"classify"`. Information items are no longer graded, so when in doubt choose `requirement`.
 
+## Per requirement: labels, when the batch asks
+
+If the batch file has a top-level `labels` object, set `labels` for every requirement you don't classify as information. Each entry names a label with its allowed `values`, its `description`, and `multi` (true: a list of one or more values; otherwise one value as a string). Use only those names and values, and judge from the requirement's own text. `safety` and `security` are relevance flags: never assign an ASIL, SIL or CAL. When the text doesn't tell, use `unclear` where it is allowed, otherwise the closest value.
+
 ## Per requirement: question and rewrite
 
 - `question`: one clarification question to the customer that resolves the confirmed findings, in the requirement's language (German: formal "Sie"). Be concrete: ask for the value, unit, tolerance, condition, actor or complete list that is missing. Combine several findings into one question. Empty string if nothing is confirmed.
@@ -49,7 +53,10 @@ Write exactly this JSON to the output path with the Write tool, nothing else, th
    "findings": [{"index": 0, "rule": "vague-term", "verdict": "confirmed", "reason": "..."}],
    "question": "...",
    "rewrite": "..."},
-  {"key": 1, "id": "REQ-2", "findings": [], "kind": "information", "question": "", "rewrite": ""}
+  {"key": 1, "id": "REQ-2", "findings": [], "kind": "information", "question": "", "rewrite": ""},
+  {"key": 2, "id": "REQ-3", "findings": [],
+   "labels": {"domain": ["EE", "SW"], "safety": "yes", "security": "no"},
+   "question": "", "rewrite": ""}
 ]}
 ```
 

@@ -77,7 +77,11 @@ def test_disabled_rule_does_not_run_and_profile_is_recorded(tmp_path):
     )
     assert doc["requirements"][0]["findings"] == []
     assert "absolute" not in doc["rules"]
-    assert doc["profile"] == {"name": str(f), "ears": False}
+    assert doc["profile"] == {
+        "name": str(f),
+        "ears": False,
+        "labels": ["domain", "safety", "security"],
+    }
 
 
 def test_severity_override_reaches_finding_and_grade(tmp_path):

@@ -1,7 +1,7 @@
 """Rule profiles: which rules run and at which severity. Built-ins live in rules.toml; custom ones in a TOML file."""
 
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .checks import RULES
@@ -14,6 +14,7 @@ class Profile:
     name: str
     severities: dict[str, str]  # active rule -> effective severity
     ears: bool = False
+    labels: list[str] = field(default_factory=list)  # Haiku labels the reviewer sets
 
 
 def load_profile(spec: str = "customer", ears: bool = False) -> Profile:
@@ -36,7 +37,22 @@ def load_profile(spec: str = "customer", ears: bool = False) -> Profile:
         sev.setdefault(
             "ears-nonconforming", RULES["rules"]["ears-nonconforming"]["severity"]
         )
-    return Profile(spec, sev, ears)
+    return Profile(spec, sev, ears, _labels(spec, data))
+
+
+def _labels(name: str, data: dict) -> list[str]:
+    """The nearest `labels` list up the extends chain (cycles are caught by _resolve first)."""
+    if "labels" not in data:
+        base = data.get("extends")
+        return _labels(base, RULES["profiles"][base]) if base else []
+    labels = data["labels"]
+    if not isinstance(labels, list) or not all(isinstance(x, str) for x in labels):
+        raise ValueError(f"{name}: labels must be a list of label names")
+    if unknown := [x for x in labels if x not in RULES["labels"]]:
+        raise ValueError(
+            f"{name}: unknown label(s) {', '.join(unknown)} (known: {', '.join(RULES['labels'])})"
+        )
+    return labels
 
 
 def _check_types(name: str, data: dict) -> None:
