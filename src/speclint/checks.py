@@ -242,6 +242,7 @@ _RANGE_BEFORE = re.compile(r"\d\s*(?:-|–|\.\.|to|bis)\s*$", re.IGNORECASE)
 _RANGE_GAP = re.compile(r"\s*(-|–|\.\.|to|bis|and|und)\s*", re.IGNORECASE)
 _TOL_AFTER = re.compile(r"^\s*(?:±|\+/-|\+-|\+\s?\d)")  # "12 V +10 %/-5 %" too
 _TOL_SECOND = re.compile(r"/\s*[+-]\s*$")  # the "-5 %" of "+10 %/-5 %"
+_PROPORTION = re.compile(r"\s+(?:of|der|des|aller|von)\b", re.IGNORECASE)
 _HUNDRED_PERCENT = re.compile(r"^100\s?%$")
 
 
@@ -250,6 +251,8 @@ def _missing_tolerance(text: str, lang: str) -> list[Finding]:
     for m in _tolerance_re().finditer(text):
         if _HUNDRED_PERCENT.match(m.group(0)):
             continue  # absolute rule territory, not a tolerance problem
+        if m.group(0).endswith("%") and _PROPORTION.match(text, m.end()):
+            continue  # "97% of all leads" is a share of a population, not a measured value
         # the bound must belong to this value: look back no further than the previous value
         before = text[max(prev_end, m.start() - 40) : m.start()]
         bounded = bool(
