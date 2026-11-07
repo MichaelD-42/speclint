@@ -53,12 +53,15 @@ With `-o results.json`, the same goes to one JSON file defined by [`schema/resul
 - **Absolutes:** always, never, at all times; immer, jederzeit, ausnahmslos.
 - **Undefined conditions:** in case of failure, in normal operation; im Fehlerfall, bei Bedarf.
 - **Vague timing:** immediately, promptly; sofort, unverzüglich, rechtzeitig.
+- **Weak obligations:** should, will, may; sollte, kann, wird (future). Binding is shall/must, muss.
 
 The `system` profile adds:
 
 - **Purpose phrases:** in order to, so that; um … zu, damit, sodass.
 - **Superfluous infinitives:** be able to, be capable of; in der Lage sein.
 - **Clause combinators:** unless, except, otherwise; es sei denn, sondern, andernfalls.
+- **One thought per requirement:** a second shall/must, muss/soll in the same item.
+- **"soll" as non-binding:** many house styles use muss = mandatory, soll = desired. In `customer`, "soll" counts as binding.
 
 Each finding caps the grade of its item: an error at D, a warning at B, an info at A. The item gets the worst cap, then one letter lower for each further distinct warning or error rule, down to F. Infos and repeated hits of the same rule don't lower it further. An item without findings gets "no findings". The caps live in `rules.toml` under `[grading]`. The language is detected for each item; an item too short to tell takes the language of most items in the run. You can also set it with `--lang`.
 

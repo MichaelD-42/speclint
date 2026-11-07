@@ -275,6 +275,35 @@ def _passive_no_actor(doc, lang: str) -> list[Finding]:
     return out
 
 
+def _modals(doc, lang: str, active: set[str]) -> list[Finding]:
+    def is_modal(t, words):
+        if lang == "en":
+            return t.tag_ == "MD" and t.lower_ in words
+        return t.lower_ in words
+
+    def future(t):  # "wird speichern", not the passive "wird gespeichert"
+        return t.lemma_ == "werden" and any(
+            c.tag_ == "VVINF" and c.dep_ == "oc" for c in t.children
+        )
+
+    out = []
+    if "single-thought" in active:
+        words = set(RULES["rules"]["single-thought"][lang]["obligation"])
+        out += [
+            _span("single-thought", doc, t, t.head)
+            for t in [t for t in doc if is_modal(t, words)][1:]
+        ]
+    for rule in ("weak-obligation", "soll-obligation"):
+        words = set(RULES["rules"][rule].get(lang, {}).get("weak", []))
+        if rule in active and words:
+            out += [
+                Finding(rule, t.text, t.idx, t.idx + len(t.text))
+                for t in doc
+                if is_modal(t, words) or (rule == "weak-obligation" and future(t))
+            ]
+    return out
+
+
 def _purpose_de(doc) -> list[Finding]:
     """ "um … zu" (KOUI, spans to its infinitive) and the conjunction "damit" (KOUS, not the adverb)."""
     return [
@@ -328,6 +357,7 @@ def check_doc(doc, lang: str, active: set[str]) -> list[Finding]:
         findings += _missing_tolerance(text, lang)
     if "passive-no-actor" in active:
         findings += _passive_no_actor(doc, lang)
+    findings += _modals(doc, lang, active)
     if "purpose-phrase" in active and lang == "de":
         findings += _purpose_de(doc)
     # one finding per span: phrase and lemma lists may overlap (e.g. "so schnell wie möglich")

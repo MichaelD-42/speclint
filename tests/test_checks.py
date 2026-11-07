@@ -93,6 +93,20 @@ def rules(text, lang, profile="system"):
             "Das Steuergerät muss aufwachen, es sei denn, die Batterie ist leer.",
             "clause-combinator",
         ),
+        (
+            "en",
+            "The ECU shall store the error and shall notify the gateway.",
+            "single-thought",
+        ),
+        (
+            "de",
+            "Das Steuergerät muss den Fehler speichern und muss das Gateway informieren.",
+            "single-thought",
+        ),
+        ("en", "The ECU should store the error.", "weak-obligation"),
+        ("de", "Das Steuergerät sollte den Fehler speichern.", "weak-obligation"),
+        ("de", "Das Steuergerät wird den Fehler speichern.", "weak-obligation"),
+        ("de", "Das Steuergerät soll den Fehler speichern.", "soll-obligation"),
     ],
 )
 def test_rule_fires(lang, text, rule):
@@ -327,3 +341,26 @@ def test_customer_profile_has_temporal_word_but_not_purpose_phrase():
         "en",
         "customer",
     ) == ["temporal-word"]
+
+
+@pytest.mark.parametrize(
+    "lang,text",
+    [
+        ("en", "The ECU shall store the last will of the user."),  # noun "will"
+        ("en", "The ECU shall store the date of 1 May."),  # month
+        ("de", "Der Fehler wird vom Steuergerät gespeichert."),  # passive, not future
+    ],
+)
+def test_modal_rules_do_not_fire(lang, text):
+    assert not {"weak-obligation", "single-thought"} & set(rules(text, lang))
+
+
+def test_single_thought_keeps_weak_obligation_visible():
+    found = rules("The ECU shall store the error and should notify the gateway.", "en")
+    assert {"single-thought", "weak-obligation"} <= set(found)
+
+
+def test_soll_is_binding_in_customer_profile():
+    assert "soll-obligation" not in rules(
+        "Das Steuergerät soll den Fehler speichern.", "de", "customer"
+    )
