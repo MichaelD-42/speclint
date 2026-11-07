@@ -165,8 +165,41 @@ incose = "R21"
 severity = "info"
 message = "Text in parentheses; make it part of the requirement or move it to a note"
 
+
+# Whole-spec rules: each finding goes on every affected item and lists the others as `related`.
+[rules.undefined-acronym]
+category = "completeness"
+incose = "R37, R38, R4"
+severity = "info"
+message = "Acronym never expanded in this spec; define it (\"Electronic Control Unit (ECU)\") or add a glossary"
+
+[rules.decimal-format]
+category = "accuracy"
+incose = "R40"
+severity = "info"
+message = "Decimal separator differs from the rest of the spec (1,5 vs 1.5)"
+
+[rules.unit-system]
+category = "accuracy"
+incose = "R6, R36"
+severity = "warning"
+message = "Unit system differs from the rest of the spec (metric vs imperial)"
+
+[rules.duplicate]
+category = "completeness"
+incose = "R30"
+severity = "warning"
+message = "Near-identical to another requirement; keep one"
+
+# All-caps words that need no expansion: common bus/hardware acronyms and capitalized keywords.
+# The units in [tolerance] and the item IDs of the run are never acronyms either.
+[acronyms]
+known = ["CAN", "LIN", "USB", "LED", "PC", "OK", "SHALL", "MUST", "SHOULD", "WILL", "MAY", "NOT", "AND", "OR", "IF", "THEN", "MUSS", "SOLL", "DARF", "KANN", "NICHT", "UND", "ODER", "WENN", "DANN"]
+
 # Units for missing-tolerance (case-sensitive) and the words that make a value bounded.
 [tolerance]
+metric = ["m", "mm", "cm", "km", "µm", "km/h", "m/s", "kg", "g", "t", "°C", "bar", "mbar", "Pa", "kPa", "N", "Nm"]
+imperial = ["°F", "inch", "ft", "lb", "lbs", "mph", "psi", "gal"]  # not "in": an ordinary English word
 rates = ["km/h", "m/s", "m/s²", "kbit/s", "Mbit/s", "U/min"]  # a slash that is a unit, not an oblique
 units = ["ms", "µs", "us", "ns", "s", "sec", "min", "h", "Hz", "kHz", "MHz", "GHz", "V", "mV", "kV", "A", "mA", "µA", "W", "mW", "kW", "Wh", "kWh", "Ah", "mAh", "°C", "K", "m", "mm", "cm", "km", "µm", "km/h", "m/s", "m/s²", "kg", "g", "t", "N", "Nm", "bar", "mbar", "Pa", "kPa", "%", "dB", "dBm", "lx", "cd", "rpm", "U/min", "bit", "Bit", "byte", "Byte", "kB", "MB", "GB", "kbit/s", "Mbit/s", "fps", "Ω", "kΩ"]
 en.bounds = ["max", "maximum", "min", "minimum", "at least", "at most", "within", "less than", "more than", "greater than", "lower than", "higher than", "up to", "no more than", "no less than", "not exceed", "not more than", "not less than", "between", "below", "above", "under", "over", "exceed", "exceeds", "≤", "≥", "<", ">", "±", "+/-", "+-"]
@@ -175,9 +208,9 @@ de.bounds = ["max", "max.", "maximal", "höchstens", "min", "min.", "mindestens"
 # Profiles: which rules run, at which severity (= grade cap). `--profile <name|file.toml>`; a custom file
 # uses a [profile] table with the same keys. Resolution: extends, then rules (replace), enable, disable, severity.
 [profiles.customer]
-rules = ["vague-term", "missing-tolerance", "escape-clause", "open-ended", "undefined-condition", "ambiguous-combinator", "unresolved-reference", "passive-no-actor", "absolute", "temporal-word", "weak-obligation"]
+rules = ["vague-term", "missing-tolerance", "escape-clause", "open-ended", "undefined-condition", "ambiguous-combinator", "unresolved-reference", "passive-no-actor", "absolute", "temporal-word", "weak-obligation", "undefined-acronym", "duplicate"]
 
 [profiles.system]
 extends = "customer"
-enable = ["purpose-phrase", "superfluous-infinitive", "clause-combinator", "single-thought", "soll-obligation", "oblique", "parenthetical"]
+enable = ["purpose-phrase", "superfluous-infinitive", "clause-combinator", "single-thought", "soll-obligation", "oblique", "parenthetical", "decimal-format", "unit-system"]
 severity = { passive-no-actor = "warning" }

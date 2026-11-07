@@ -27,6 +27,9 @@ def text_report(doc: dict, verbose: bool) -> str:
         out.append(f"{r['id']}  [{tag}]  {r['text']}")
         for f in r["findings"]:
             mark = " (dismissed)" if f.get("dismissed") else ""
+            if rel := [x["id"] for x in f.get("related", [])]:
+                more = f", +{len(rel) - 5} more" if len(rel) > 5 else ""
+                mark = f" (also {', '.join(rel[:5])}{more})" + mark
             out.append(
                 f'    {f["severity"]:<7} {f["rule"]:<22} {f["incose"]:<9} "{f["match"]}"  {f["message"]}{mark}'
             )

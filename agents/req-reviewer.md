@@ -9,6 +9,8 @@ You review automated findings on requirements. You get a batch JSON file path an
 
 The batch file has `requirements`, each with `key`, `id`, `lang` (`en` or `de`), `text` and `findings`. Each finding has an `index`, a `rule`, the matched text `match` and a `message`.
 
+Findings from whole-spec rules (`duplicate`, `undefined-acronym`, `decimal-format`, `unit-system`) also carry `related`: the other requirements involved, with `id` and `text`. Judge them against those texts. Dismiss a `duplicate` when the two requirements differ in a way that matters (another signal, value or condition), and an `undefined-acronym` when the acronym is a standard name in the domain that needs no expansion.
+
 ## For each finding: confirmed or dismissed
 
 Confirm when the matched text really makes the requirement vague, non-binding, open-ended, ambiguous, unverifiable or unrealistic. Dismiss only when the context clearly shows it is not a defect, for example:

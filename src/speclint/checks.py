@@ -76,6 +76,9 @@ class Finding:
     match: str
     start: int
     end: int
+    related: list[dict] = field(
+        default_factory=list
+    )  # whole-spec rules: [{"key", "id"}]
 
     @property
     def spec(self) -> dict:
@@ -137,6 +140,7 @@ def report(results: list[Result], profile=None) -> dict:
                         "end": f.end,
                         "severity": sev[f.rule],
                         **{k: f.spec[k] for k in ("category", "incose", "message")},
+                        **({"related": f.related} if f.related else {}),
                     }
                     for f in r.findings
                 ],
@@ -418,4 +422,7 @@ def check(reqs: list[Requirement], lang: str = "auto", profile=None) -> list[Res
             zip(group, nlp(code).pipe(r.req.text for r in group)) if group else ()
         ):
             res.findings = check_doc(doc, code, active)
+    from .spec_checks import check_spec  # imports Finding/Result from here
+
+    check_spec(results, active)
     return results

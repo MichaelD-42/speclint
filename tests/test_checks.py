@@ -1,15 +1,13 @@
 import pytest
+from conftest import item_only
 
 from speclint.checks import Requirement, check, detect_lang, grade, report, rescore
-from speclint.profiles import load_profile
 
 
 def rules(text, lang, profile="system"):
     return [
         f.rule
-        for f in check([Requirement("X", text)], lang, load_profile(profile))[
-            0
-        ].findings
+        for f in check([Requirement("X", text)], lang, item_only(profile))[0].findings
     ]
 
 

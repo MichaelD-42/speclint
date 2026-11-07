@@ -116,6 +116,16 @@
         "category": { "type": "string" },
         "incose": { "type": "string" },
         "message": { "type": "string" },
+        "related": {
+          "description": "Whole-spec rules: the other items with the same finding. key is the position in requirements (IDs can repeat across files).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key", "id"],
+            "additionalProperties": false,
+            "properties": { "key": { "type": "integer", "minimum": 0 }, "id": { "type": "string" } }
+          }
+        },
         "dismissed": { "type": "boolean", "description": "Set by review; dismissed findings do not count towards the grade." },
         "review_reason": { "type": "string" }
       }

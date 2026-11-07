@@ -41,6 +41,21 @@ def batches(doc: dict, out_dir: Path, size: int = 25) -> list[Path]:
                                     "incose": f["incose"],
                                     "severity": f["severity"],
                                     "message": f["message"],
+                                    **(
+                                        {
+                                            "related": [
+                                                {
+                                                    "id": x["id"],
+                                                    "text": doc["requirements"][
+                                                        x["key"]
+                                                    ]["text"],
+                                                }
+                                                for x in f["related"]
+                                            ]
+                                        }
+                                        if f.get("related")
+                                        else {}
+                                    ),
                                 }
                                 for i, f in enumerate(r["findings"])
                             ],

@@ -55,6 +55,11 @@ With `-o results.json`, the same goes to one JSON file defined by [`schema/resul
 - **Vague timing:** immediately, promptly; sofort, unverzüglich, rechtzeitig.
 - **Weak obligations:** should, will, may; sollte, kann, wird (future). Binding is shall/must, muss.
 
+Across the whole spec, each finding goes on every item it affects and names the others as `related`:
+
+- **Unexpanded acronyms:** an acronym that is never written out ("Electronic Control Unit (ECU)", or a glossary line "ECU: …") anywhere in the run.
+- **Duplicates:** near-identical requirements (same words, at least five).
+
 The `system` profile adds:
 
 - **Purpose phrases:** in order to, so that; um … zu, damit, sodass.
@@ -63,6 +68,8 @@ The `system` profile adds:
 - **One thought per requirement:** a second shall/must, muss/soll in the same item.
 - **Slashes:** speed/position, Drehzahl/Position. Units (km/h), numbers (12/05), paths and URLs are allowed.
 - **Long parentheticals:** more than three words in parentheses; "(ECU)" is fine.
+- **Mixed decimal format:** "1,5 V" and "1.5 V" in the same language. Only numbers with a unit count, so "Abschnitt 4.1" is not a decimal.
+- **Mixed unit systems:** metric and imperial (mm and inch, °C and °F).
 - **"soll" as non-binding:** many house styles use muss = mandatory, soll = desired. In `customer`, "soll" counts as binding.
 
 Each finding caps the grade of its item: an error at D, a warning at B, an info at A. The item gets the worst cap, then one letter lower for each further distinct warning or error rule, down to F. Infos and repeated hits of the same rule don't lower it further. An item without findings gets "no findings". The caps live in `rules.toml` under `[grading]`. The language is detected for each item; an item too short to tell takes the language of most items in the run. You can also set it with `--lang`.

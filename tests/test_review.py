@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from conftest import item_only
 
 from speclint.checks import Requirement, check, report
 from speclint.cli import main
@@ -8,6 +9,7 @@ from speclint.review import batches, merge
 
 
 def doc():
+    p = item_only("customer")
     return report(
         check(
             [
@@ -16,7 +18,9 @@ def doc():
                 Requirement("C", "The ECU shall start within 200 ms."),
             ],
             "en",
-        )
+            p,
+        ),
+        p,
     )
 
 
