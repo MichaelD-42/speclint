@@ -90,6 +90,42 @@ en.phrases = ["at all times", "under all circumstances", "under any circumstance
 de.lemmas = ["immer", "nie", "niemals", "jederzeit", "stets", "ausnahmslos"]
 de.phrases = ["unter allen Umständen", "in jedem Fall", "zu jeder Zeit", "ohne Ausnahme"]
 
+
+[rules.temporal-word]
+category = "accuracy"
+incose = "R35"
+severity = "warning"
+message = "Vague timing; give an explicit time bound (e.g. within 100 ms)"
+en.lemmas = ["immediately", "promptly", "instantly", "soon", "eventually"]
+en.phrases = ["in time", "without delay", "right away"]
+de.lemmas = ["sofort", "unverzüglich", "umgehend", "rechtzeitig", "alsbald", "sogleich"]
+de.phrases = ["ohne Verzögerung"]
+
+[rules.purpose-phrase]
+category = "non_ambiguity"
+incose = "R20"
+severity = "info"
+message = "Purpose phrase; move the reason to the rationale"
+en.phrases = ["in order to", "so that", "so as to", "for the purpose of", "with the aim of"]
+# "um … zu" and the conjunction "damit" are found by the parser (checks._purpose_de); "damit" is also an adverb
+de.phrases = ["sodass", "so dass", "zum Zweck", "mit dem Ziel"]
+
+[rules.superfluous-infinitive]
+category = "accuracy"
+incose = "R10"
+severity = "warning"
+message = "Superfluous infinitive; state the capability directly (shall store, not shall be able to store)"
+en.phrases = ["be able to", "be capable of", "have the capability to", "have the ability to"]
+de.phrases = ["in der Lage", "imstande", "im Stande", "die Möglichkeit haben", "die Möglichkeit bieten"]
+
+[rules.clause-combinator]
+category = "non_ambiguity"
+incose = "R19"
+severity = "warning"
+message = "Clause combinator; split into separate requirements or state the exception as its own condition"
+en.phrases = ["unless", "except", "however", "otherwise", "whereas"]
+de.phrases = ["es sei denn", "außer wenn", "außer falls", "sondern", "andernfalls", "ansonsten"]
+
 # Units for missing-tolerance (case-sensitive) and the words that make a value bounded.
 [tolerance]
 units = ["ms", "µs", "us", "ns", "s", "sec", "min", "h", "Hz", "kHz", "MHz", "GHz", "V", "mV", "kV", "A", "mA", "µA", "W", "mW", "kW", "Wh", "kWh", "Ah", "mAh", "°C", "K", "m", "mm", "cm", "km", "µm", "km/h", "m/s", "m/s²", "kg", "g", "t", "N", "Nm", "bar", "mbar", "Pa", "kPa", "%", "dB", "dBm", "lx", "cd", "rpm", "U/min", "bit", "Bit", "byte", "Byte", "kB", "MB", "GB", "kbit/s", "Mbit/s", "fps", "Ω", "kΩ"]
@@ -99,9 +135,9 @@ de.bounds = ["max", "max.", "maximal", "höchstens", "min", "min.", "mindestens"
 # Profiles: which rules run, at which severity (= grade cap). `--profile <name|file.toml>`; a custom file
 # uses a [profile] table with the same keys. Resolution: extends, then rules (replace), enable, disable, severity.
 [profiles.customer]
-rules = ["vague-term", "missing-tolerance", "escape-clause", "open-ended", "undefined-condition", "ambiguous-combinator", "unresolved-reference", "passive-no-actor", "absolute"]
+rules = ["vague-term", "missing-tolerance", "escape-clause", "open-ended", "undefined-condition", "ambiguous-combinator", "unresolved-reference", "passive-no-actor", "absolute", "temporal-word"]
 
 [profiles.system]
 extends = "customer"
-enable = []
+enable = ["purpose-phrase", "superfluous-infinitive", "clause-combinator"]
 severity = { passive-no-actor = "warning" }

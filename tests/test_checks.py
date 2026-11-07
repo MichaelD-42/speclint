@@ -1,10 +1,16 @@
 import pytest
 
 from speclint.checks import Requirement, check, detect_lang, grade, report, rescore
+from speclint.profiles import load_profile
 
 
-def rules(text, lang):
-    return [f.rule for f in check([Requirement("X", text)], lang)[0].findings]
+def rules(text, lang, profile="system"):
+    return [
+        f.rule
+        for f in check([Requirement("X", text)], lang, load_profile(profile))[
+            0
+        ].findings
+    ]
 
 
 @pytest.mark.parametrize(
@@ -58,6 +64,35 @@ def rules(text, lang):
         ("de", "Das Steuergerät muss jederzeit erreichbar sein.", "absolute"),
         ("en", "The supply voltage shall be 12 V.", "missing-tolerance"),
         ("de", "Die Versorgungsspannung muss 12 V betragen.", "missing-tolerance"),
+        ("en", "The ECU shall stop the motor immediately.", "temporal-word"),
+        ("de", "Das Steuergerät muss den Motor sofort stoppen.", "temporal-word"),
+        (
+            "en",
+            "The ECU shall log errors in order to support diagnosis.",
+            "purpose-phrase",
+        ),
+        (
+            "de",
+            "Das Steuergerät muss Fehler speichern, um die Diagnose zu unterstützen.",
+            "purpose-phrase",
+        ),
+        (
+            "de",
+            "Das Steuergerät muss Fehler speichern, damit die Werkstatt sie auslesen kann.",
+            "purpose-phrase",
+        ),
+        ("en", "The ECU shall be able to store 100 errors.", "superfluous-infinitive"),
+        (
+            "de",
+            "Das Steuergerät muss in der Lage sein, 100 Fehler zu speichern.",
+            "superfluous-infinitive",
+        ),
+        ("en", "The ECU shall wake up unless the battery is low.", "clause-combinator"),
+        (
+            "de",
+            "Das Steuergerät muss aufwachen, es sei denn, die Batterie ist leer.",
+            "clause-combinator",
+        ),
     ],
 )
 def test_rule_fires(lang, text, rule):
@@ -276,3 +311,19 @@ def test_german_agent_only_covers_its_own_passive():
 )
 def test_asymmetric_tolerance_is_bounded(lang, text):
     assert "missing-tolerance" not in rules(text, lang)
+
+
+def test_um_zu_span_does_not_hide_a_vague_term_inside_it():
+    found = rules(
+        "Das Steuergerät muss Fehler speichern, um eine schnelle Diagnose zu ermöglichen.",
+        "de",
+    )
+    assert {"purpose-phrase", "vague-term"} <= set(found)
+
+
+def test_customer_profile_has_temporal_word_but_not_purpose_phrase():
+    assert rules(
+        "The ECU shall log errors in order to support diagnosis immediately.",
+        "en",
+        "customer",
+    ) == ["temporal-word"]

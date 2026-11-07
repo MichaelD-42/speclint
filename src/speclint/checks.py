@@ -275,6 +275,21 @@ def _passive_no_actor(doc, lang: str) -> list[Finding]:
     return out
 
 
+def _purpose_de(doc) -> list[Finding]:
+    """ "um … zu" (KOUI, spans to its infinitive) and the conjunction "damit" (KOUS, not the adverb)."""
+    return [
+        _span("purpose-phrase", doc, t, t.head)
+        if t.tag_ == "KOUI"
+        else Finding("purpose-phrase", t.text, t.idx, t.idx + len(t.text))
+        for t in doc
+        if (t.tag_ == "KOUI" and t.lower_ == "um")
+        or (t.tag_ == "KOUS" and t.lower_ == "damit")
+    ]
+
+
+_SPANNING = {"passive-no-actor", "purpose-phrase", "single-thought"}
+
+
 def _span(rule: str, doc, t1, t2) -> Finding:
     """Finding covering two tokens in text order; match is the exact text between them."""
     a, b = sorted([t1, t2], key=lambda t: t.i)
@@ -313,13 +328,13 @@ def check_doc(doc, lang: str, active: set[str]) -> list[Finding]:
         findings += _missing_tolerance(text, lang)
     if "passive-no-actor" in active:
         findings += _passive_no_actor(doc, lang)
+    if "purpose-phrase" in active and lang == "de":
+        findings += _purpose_de(doc)
     # one finding per span: phrase and lemma lists may overlap (e.g. "so schnell wie möglich")
     findings.sort(key=lambda f: (f.start, -(f.end - f.start)))
     kept, last_end = [], -1
     for f in findings:
-        if (
-            f.rule == "passive-no-actor"
-        ):  # spans whole clauses; must not hide findings inside it
+        if f.rule in _SPANNING:  # spans whole clauses; must not hide findings inside it
             kept.append(f)
         elif f.start >= last_end:
             kept.append(f)
