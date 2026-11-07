@@ -1,6 +1,6 @@
 ---
 name: speclint
-description: Check the quality of requirements, user stories or customer specifications (Lastenheft, ReqIF, CSV/Excel export, sphinx-needs RST/Markdown) in English or German. Finds vague terms, escape clauses, open-ended lists, missing tolerances, ambiguous combinators, pronouns, passives without actor, absolutes and undefined conditions; grades each requirement A to F; drafts clarification questions for the customer; writes one JSON result (schema in schema/results.schema.json). Use when asked to lint, check, grade, review or qualify requirements, or to find what needs clarifying with a customer.
+description: Check the quality of requirements, user stories or customer specifications (Lastenheft, ReqIF, CSV/Excel export, sphinx-needs needs.json or RST/Markdown) in English or German. Finds vague terms, escape clauses, open-ended lists, missing tolerances, ambiguous combinators, pronouns, passives without actor, absolutes and undefined conditions; grades each requirement A to F; drafts clarification questions for the customer; writes one JSON result (schema in schema/results.schema.json). Use when asked to lint, check, grade, review or qualify requirements, or to find what needs clarifying with a customer.
 ---
 
 # Requirements check
@@ -29,7 +29,7 @@ The first run creates the environment (spaCy plus two small language models, abo
 
 ## Steps
 
-1. **Inputs.** Find the files the user means. Supported: `.reqif`, `.reqifz`, `.csv`, `.tsv`, `.rst`, `.md`. For CSV with unusual headers pass `--id-col` and `--text-col`. Markdown/RST need sphinx-needs directives with `:id:` or lines like `REQ-1: text`. If nothing parses, `check` exits with code 2: look at the file and say what format is expected; do not guess. With `--classify`, exit 2 can also mean every item was labelled information (the error says "nothing graded"): tell the user and rerun without `--classify`.
+1. **Inputs.** Find the files the user means. Supported: `.reqif`, `.reqifz`, sphinx-needs `needs.json`, `.csv`, `.tsv`, `.rst`, `.md`. For CSV with unusual headers pass `--id-col` and `--text-col`. Markdown/RST need sphinx-needs directives with `:id:` or lines like `REQ-1: text`. If nothing parses, `check` exits with code 2: look at the file and say what format is expected; do not guess. With `--classify`, exit 2 can also mean every item was labelled information (the error says "nothing graded"): tell the user and rerun without `--classify`.
 
 2. **Check.** Put outputs in `speclint-out/` next to the inputs unless the user names a place:
 
@@ -41,7 +41,7 @@ The first run creates the environment (spaCy plus two small language models, abo
 
    Add `--ears` when the user's requirements are written, or are meant to be written, in EARS templates (While/When/If…then/Where; Solange/Wenn/Falls…dann/Sofern). It labels each item with its pattern and flags the ones that don't conform. Don't add it to a customer specification nobody wrote in EARS: every item would be flagged.
 
-   Add `--classify` (and `--extra classify` after `uv run`) when the input is a customer specification that mixes binding requirements with headings, notes and explanations. It labels each item requirement or information with a local GLiClass model and excludes information from the grade. The first use downloads PyTorch (CPU) and the model, about 1.5 GB in total, and runs at roughly 6 to 15 items/s: tell the user before the first download. Its labels are a hint, not ground truth.
+   Add `--classify` (and `--extra classify` after `uv run`) when the input is a customer specification that mixes binding requirements with headings, notes and explanations. It labels each item requirement or information with a local GLiClass model and excludes information from the grade. The first use downloads PyTorch (CPU) and the model, about 1.5 GB in total, and runs at roughly 6 to 15 items/s: tell the user before the first download. Its labels are a hint, not ground truth. Skip `--classify` when a ReqIF export carries an object type (requirement/information): speclint reads it and already excludes information items.
 
 3. **Review** (do this when the user wants clarification questions, a review, or asks what to ask the customer; skip for a quick lint):
 

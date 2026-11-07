@@ -112,7 +112,7 @@ Anything else gets an `ears-nonconforming` warning naming the problem: no "shall
 Three stages run in this order; only the first always runs.
 
 1. **Rules** (`speclint check`) produce every finding and every grade.
-2. **Classifier** (`--classify`, optional): a local GLiClass model labels each item as a requirement or as information, such as a heading, note or explanation. Information items are not graded or reviewed. Any item with an obligation verb (shall, must, should; muss, soll, darf) counts as a requirement, whatever the model says.
+2. **Classifier** (`--classify`, optional): a local GLiClass model labels each item as a requirement or as information, such as a heading, note or explanation. Information items are not graded or reviewed. Any item with an obligation verb (shall, must, should; muss, soll, darf) counts as a requirement, whatever the model says. When the input already says what an item is, as in a ReqIF object type ("Anforderung", "Information", "Überschrift", …), that decides instead and the classifier leaves the item alone. The attribute names and values it recognizes are in `rules.toml` under `[input]`, and so is the list of sphinx-needs types that are read (`need_types`; `test` or `impl` needs are skipped).
 3. **Reviewers** (`batches` → `speclint:req-reviewer` → `merge`, optional): Haiku subagents confirm or dismiss each finding and draft a question and a rewrite. Dismissed findings stop counting and the item is regraded.
 
 ## Quick start
@@ -136,7 +136,7 @@ uv run speclint batches results.json --out review/       # batch files for revie
 uv run speclint merge results.json review/*.review.json  # apply reviews, regrade
 ```
 
-It reads ReqIF and ReqIFz, and CSV or TSV, where the ID and text columns are found by their headers or set with `--id-col` / `--text-col`. It also reads RST or Markdown with sphinx-needs directives (`.. req::` or MyST `{req}` with `:id:`) or `ID: text` lines. `--fail-on D` exits 1 when any graded item is D or worse, for CI. Input it cannot read exits 2, and so does a `--classify` run that labels every item as information, since nothing was graded.
+It reads ReqIF and ReqIFz in document order (the SPEC-HIERARCHY), with headings kept as information items. It also reads sphinx-needs `needs.json` builder output, in document order, skipping external needs. Plus CSV or TSV, where the ID and text columns are found by their headers or set with `--id-col` / `--text-col`. It also reads RST or Markdown with sphinx-needs directives (`.. req::` or MyST `{req}` with `:id:`) or `ID: text` lines. `--fail-on D` exits 1 when any graded item is D or worse, for CI. Input it cannot read exits 2, and so does a `--classify` run that labels every item as information, since nothing was graded.
 
 The classifier's first run downloads PyTorch (CPU) and the model, about 1.5 GB, and runs at 6 to 15 items/s. Its labels are a hint, not ground truth.
 

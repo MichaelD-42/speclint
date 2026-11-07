@@ -53,6 +53,10 @@ def top(texts: list[str], labels: list[str]) -> list[tuple[str, float]]:
 def classify(doc: dict) -> dict:
     reqs = doc["requirements"]
     for r in reqs:
+        if (
+            "classification" in r
+        ):  # decided by the input file (or an earlier run): keep it
+            continue
         if OBLIGATION.search(r["text"]):
             r["classification"] = {
                 "model": "obligation verb",

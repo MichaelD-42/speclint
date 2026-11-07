@@ -1,13 +1,14 @@
-"""Read requirements from ReqIF/ReqIFz, CSV, reStructuredText and Markdown (sphinx-needs / MyST or `ID: text` lines)."""
+"""Read requirements from ReqIF/ReqIFz, CSV, sphinx-needs needs.json, reStructuredText and Markdown (sphinx-needs / MyST or `ID: text` lines)."""
 
 import csv
 import io
+import json
 import re
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
-from .checks import Requirement
+from .checks import RULES, Requirement
 
 ID_COLS = [
     "id",
@@ -41,8 +42,10 @@ def read(
         return read_csv(path, id_col, text_col)
     if suffix in (".rst", ".md"):
         return read_markup(path)
+    if suffix == ".json":
+        return read_needs_json(path)
     raise ValueError(
-        f"{path}: unsupported format (use .reqif, .reqifz, .csv, .tsv, .rst, .md)"
+        f"{path}: unsupported format (use .reqif, .reqifz, .csv, .tsv, .rst, .md, sphinx-needs .json)"
     )
 
 
@@ -94,46 +97,127 @@ def read_reqif(path: Path) -> list[Requirement]:
     else:
         root = ET.parse(path).getroot()
 
+    def tag(el):
+        return el.tag.split("}")[-1]
+
     names = {
         d.get("IDENTIFIER"): d.get("LONG-NAME", "")
         for d in root.iter()
-        if d.tag.split("}")[-1].startswith("ATTRIBUTE-DEFINITION-")
-        and d.get("IDENTIFIER")
+        if tag(d).startswith("ATTRIBUTE-DEFINITION-") and d.get("IDENTIFIER")
     }
-    reqs = []
+    enums = {
+        e.get("IDENTIFIER"): e.get("LONG-NAME", "")
+        for e in root.iter()
+        if tag(e) == "ENUM-VALUE"
+    }
+    objects = {}
     for obj in root.findall(".//{*}SPEC-OBJECT"):
         values = {}
         for val in obj.iter():
-            tag = val.tag.split("}")[-1]
-            if not tag.startswith("ATTRIBUTE-VALUE-"):
+            t = tag(val)
+            if not t.startswith("ATTRIBUTE-VALUE-"):
                 continue
             ref = next(
                 (
                     r.text
                     for r in val.iter()
-                    if r.tag.split("}")[-1].startswith("ATTRIBUTE-DEFINITION-")
-                    and r.tag.endswith("-REF")
+                    if tag(r).startswith("ATTRIBUTE-DEFINITION-")
+                    and tag(r).endswith("-REF")
                 ),
                 None,
             )
-            if tag == "ATTRIBUTE-VALUE-XHTML":
-                the_value = next(
-                    (v for v in val if v.tag.split("}")[-1] == "THE-VALUE"), None
-                )
+            if t == "ATTRIBUTE-VALUE-XHTML":
+                the_value = next((v for v in val if tag(v) == "THE-VALUE"), None)
                 text = (
                     " ".join(_xhtml_text(the_value).split())
                     if the_value is not None
                     else ""
                 )
+            elif (
+                t == "ATTRIBUTE-VALUE-ENUMERATION"
+            ):  # the value is a reference to an ENUM-VALUE
+                text = ", ".join(
+                    enums.get(r.text, r.text or "")
+                    for r in val.iter()
+                    if tag(r) == "ENUM-VALUE-REF"
+                )
             else:
                 text = val.get("THE-VALUE", "")
             values[names.get(ref, ref)] = text
+        objects[obj.get("IDENTIFIER")] = values
+    # document order is the SPEC-HIERARCHY (pre-order); objects outside it follow in file order
+    order = [
+        r.text
+        for h in root.iter()
+        if tag(h) == "SPEC-HIERARCHY"
+        for o in h
+        if tag(o) == "OBJECT"
+        for r in o
+        if tag(r) == "SPEC-OBJECT-REF" and r.text in objects
+    ]
+    order = list(dict.fromkeys(order + list(objects)))
+    reqs = []
+    for ident in order:
+        values = objects[ident]
         text = values.get("ReqIF.Text") or next(
             (v for k, v in values.items() if "text" in (k or "").lower() and v), ""
         )
-        rid = values.get("ReqIF.ForeignID") or obj.get("IDENTIFIER", "")
+        rid = values.get("ReqIF.ForeignID") or ident
         if text.strip():
-            reqs.append(Requirement(rid, text, str(path)))
+            reqs.append(Requirement(rid, text, str(path), _kind(values)))
+        elif heading := values.get("ReqIF.ChapterName", "").strip():
+            reqs.append(Requirement(rid, heading, str(path), "information"))
+    return reqs
+
+
+def _kind(values: dict) -> str:
+    """requirement / information from the first object-type attribute with a known value, else ""."""
+    inp = RULES["input"]
+    for attr in inp["kind_attributes"]:
+        value = (
+            next(
+                (v for k, v in values.items() if (k or "").lower() == attr.lower()), ""
+            )
+            .strip()
+            .lower()
+        )
+        for kind in ("requirement", "information"):
+            if value in inp[kind]:
+                return kind
+    return ""
+
+
+def read_needs_json(path: Path) -> list[Requirement]:
+    """sphinx-needs builder output: versions[current_version].needs; only the listed need types."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        versions = data["versions"]
+        needs = versions.get(data.get("current_version")) or next(
+            iter(versions.values())
+        )
+        needs = needs["needs"]
+    except (ValueError, KeyError, TypeError, AttributeError, StopIteration) as e:
+        raise ValueError(f"{path}: not a sphinx-needs needs.json ({e!r})") from e
+    types = {t.lower() for t in RULES["input"]["need_types"]}
+    picked = [
+        n
+        for n in needs.values()
+        if str(n.get("type", "")).lower() in types and not n.get("is_external")
+    ]
+    # document order: by document, then line; needs without a location keep file order at the end
+    picked.sort(
+        key=lambda n: (
+            n.get("docname") is None,
+            n.get("docname") or "",
+            n.get("lineno") or 0,
+        )
+    )
+    reqs = []
+    for n in picked:
+        text = " ".join(str(n.get("content") or n.get("description") or "").split())
+        reqs.append(
+            Requirement(str(n["id"]), text or str(n.get("title", "")), str(path))
+        )
     return reqs
 
 
@@ -173,22 +257,22 @@ def read_markup(path: Path) -> list[Requirement]:
     while i < len(lines):
         line = lines[i]
         if m := _RST_DIRECTIVE.match(line):
-            indent, title = len(m.group(1)), m.group(3)
+            indent, kind, title = len(m.group(1)), m.group(2), m.group(3)
             body, i = [], i + 1
             while i < len(lines) and (
                 not lines[i].strip() or len(lines[i]) - len(lines[i].lstrip()) > indent
             ):
                 body.append(lines[i])
                 i += 1
-            reqs += _need(body, title, path)
+            reqs += _need(body, kind, title, path)
             continue
         if m := _MYST_DIRECTIVE.match(line):
-            fence, title = m.group(1), m.group(3)
+            fence, kind, title = m.group(1), m.group(2), m.group(3)
             body, i = [], i + 1
             while i < len(lines) and not _closes(lines[i], fence):
                 body.append(lines[i])
                 i += 1
-            reqs += _need(body, title, path)
+            reqs += _need(body, kind, title, path)
         elif m := _CODE_FENCE.match(
             line
         ):  # examples in code blocks are not requirements
@@ -201,7 +285,7 @@ def read_markup(path: Path) -> list[Requirement]:
     return reqs
 
 
-def _need(body: list[str], title: str, path: Path) -> list[Requirement]:
+def _need(body: list[str], kind: str, title: str, path: Path) -> list[Requirement]:
     opts, content = {}, []
     for ln in body:
         if not content and (m := _OPTION.match(ln)):
@@ -212,5 +296,7 @@ def _need(body: list[str], title: str, path: Path) -> list[Requirement]:
         "id" not in opts
     ):  # not a sphinx-needs object (e.g. a note or code-block directive)
         return []
+    if kind.lower() not in {t.lower() for t in RULES["input"]["need_types"]}:
+        return []  # a need type that isn't a requirement (test, impl, ...)
     text = " ".join(" ".join(content).split()) or title
     return [Requirement(opts["id"], text, str(path))]

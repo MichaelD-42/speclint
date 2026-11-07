@@ -68,6 +68,7 @@ class Requirement:
     id: str
     text: str
     source: str = ""
+    kind: str = ""  # "requirement" / "information" when the input file says so (object type, heading)
 
 
 @dataclass
@@ -103,6 +104,15 @@ def grade(findings: list[dict]) -> str:
     hard = {f["rule"] for f in active if f["severity"] != "info"}
     steps = max(0, len(hard) - 1) * g["pileup_step"]
     return GRADES[min(base + steps, len(GRADES) - 1)]
+
+
+def _input_kind(req: Requirement) -> dict:
+    """The input file's own kind. An obligation verb overrides "information", as it overrides the classifier."""
+    from .classify import OBLIGATION  # classify only imports its model lazily
+
+    if req.kind == "information" and OBLIGATION.search(req.text):
+        return {"model": "obligation verb", "kind": "requirement", "score": 1.0}
+    return {"model": "input", "kind": req.kind, "score": 1.0}
 
 
 def _default_profile():
@@ -147,6 +157,7 @@ def report(results: list[Result], profile=None) -> dict:
                     for f in r.findings
                 ],
                 **({"ears": {"pattern": r.ears}} if r.ears else {}),
+                **({"classification": _input_kind(r.req)} if r.req.kind else {}),
             }
             for r in results
         ],

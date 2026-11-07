@@ -11,12 +11,13 @@
 
 ## Now
 
-### 1. Readers: close the metadata gap
+### 1. Readers: close the metadata gap — done (branch feat/readers, stacked on feat/profiles-checks-ears, not merged)
 
 - ReqIF: read enumeration attributes (`ATTRIBUTE-VALUE-ENUMERATION` → `ENUM-VALUE-REF` → the enum value's LONG-NAME). Today they're dropped, so a DOORS object type ("Requirement"/"Information") never arrives.
 - ReqIF: emit items in SPEC-HIERARCHY order, not file order; keep headings (ReqIF.ChapterName) as information items or as section context.
 - Native `needs.json` (sphinx-needs builder output), alongside ReqIF: text from the need's content, ID, `type` as the requirement/information signal, document order. Field names to verify against the sphinx-needs docs.
 - An object type from the input file, when present, decides requirement vs information before any classifier.
+- Built: sphinx-needs types are filtered by `[input].need_types` in rules.toml (default req, spec, requirement, specification), for needs.json and for RST/MyST directives alike. External needs are skipped. needs.json text comes from `content`, or `description` in older files and imports, with `title` as the fallback. Object-type attribute names and values sit in `[input]`. An obligation verb still overrides "information". Untested on a real DOORS export: the attribute and value names are guesses until next week's data.
 
 ### 2. Grading: stop overpromising — done (branch feat/profiles-checks-ears, not merged)
 

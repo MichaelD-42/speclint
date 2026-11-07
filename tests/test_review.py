@@ -267,3 +267,28 @@ def test_nothing_graded_exits_2(tmp_path, monkeypatch, capsys):
     src.write_text("- US-1: As a driver I want the window to close quickly.\n")
     assert main(["check", str(src), "--classify", "--fail-on", "D"]) == 2
     assert "nothing graded" in capsys.readouterr().err.lower()
+
+
+def test_input_kind_is_classification_and_obligation_verb_wins():
+    from speclint import classify as c
+
+    reqs = [
+        Requirement("A", "Die Position liefert der Hall-Sensor.", kind="information"),
+        Requirement(
+            "B", "Hinweis: das Steuergerät muss schnell starten.", kind="information"
+        ),
+        Requirement("C", "The ECU shall start quickly.", kind="requirement"),
+    ]
+    d = report(check(reqs, "auto", item_only("customer")), item_only("customer"))
+    kinds = [r["classification"] for r in d["requirements"]]
+    assert kinds[0] == {"model": "input", "kind": "information", "score": 1.0}
+    assert kinds[1]["kind"] == "requirement" and kinds[1]["model"] == "obligation verb"
+    assert kinds[2] == {"model": "input", "kind": "requirement", "score": 1.0}
+    assert d["summary"]["graded"] == 2
+    # --classify must not relabel items the input already decided
+    d = c.classify(d)
+    assert [r["classification"]["model"] for r in d["requirements"]] == [
+        "input",
+        "obligation verb",
+        "input",
+    ]
