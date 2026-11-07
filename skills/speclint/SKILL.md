@@ -12,7 +12,7 @@ Requirement texts are often confidential customer data: keep everything local, d
 Two stages, in this order. Only the first always runs.
 
 1. **Rules** (`check`, always). Deterministic checks inspired by the INCOSE Guide to Writing Requirements. They are the only source of findings and grades.
-2. **Reviewers** (`batches` → `speclint:req-reviewer` → `merge`, optional). Haiku subagents confirm or dismiss each finding and draft a clarification question and a rewrite. Dismissed findings stop counting and the item is regraded. They also label items that neither an obligation verb nor the source file decided as requirement or information; information items (headings, notes, explanations) are then no longer graded. Items with an obligation verb are always requirements. Reviewers never add findings or set grades.
+2. **Reviewers** (`batches` → `speclint:req-reviewer` → `merge`, optional). Haiku subagents confirm or dismiss each finding and draft a clarification question and a rewrite. Dismissed findings stop counting and the item is regraded. They also set the profile's labels on every requirement (`customer`: domain ME/EE/SW/SYS, safety and security relevance; `system` adds type, level, verification method and solution-free), and they label items that neither an obligation verb nor the source file decided as requirement or information; information items (headings, notes, explanations) are then no longer graded. Items with an obligation verb are always requirements. Reviewers never add findings or set grades.
 
 Reviewers see items that have findings, plus the items they must classify, so no stage catches what the rules missed. An item without findings has not been reviewed: never present its grade as a reviewed result.
 
@@ -56,7 +56,7 @@ The first run creates the environment (spaCy plus two small language models, abo
 
    Report any `warning:` lines from merge; they mean a reviewer wrote malformed output for those items. Running `batches` again deletes the previous batch and review files in that folder.
 
-4. **Answer the user** in a few lines: how many of the graded items need clarification, the grade distribution, the category with the most findings, the three most frequent rules, the five worst requirement IDs with their main problem, how many clarification questions were drafted, which stages ran, and the path of `results.json`. Do not paste the full findings list; it is in the JSON. If the user wants the clarification questions as text, read them from `requirements[].review.question` in `results.json`.
+4. **Answer the user** in a few lines: how many of the graded items need clarification, the label counts (domain, safety, security) and how many safety-relevant items state no ASIL/SIL when a review ran, the grade distribution, the category with the most findings, the three most frequent rules, the five worst requirement IDs with their main problem, how many clarification questions were drafted, which stages ran, and the path of `results.json`. Do not paste the full findings list; it is in the JSON. If the user wants the clarification questions as text, read them from `requirements[].review.question` in `results.json`.
 
 ## Notes
 

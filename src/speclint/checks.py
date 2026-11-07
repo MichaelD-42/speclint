@@ -112,6 +112,17 @@ def grade(findings: list[dict]) -> str:
     return GRADES[min(base + steps, len(GRADES) - 1)]
 
 
+# A stated ASIL/SIL ("ASIL B", "ASIL-D", "ASIL B(D)", "SIL 2"). Read, never inferred.
+_INTEGRITY = re.compile(
+    r"(?<!\w)(ASIL)[\s-]?(QM|[A-D](?:\([A-D]\))?)(?![\w(])|(?<!\w)(SIL)[\s-]?([1-4])(?!\w)"
+)
+
+
+def integrity(text: str) -> str:
+    m = _INTEGRITY.search(text)
+    return f"{m.group(1) or m.group(3)} {m.group(2) or m.group(4)}" if m else ""
+
+
 def _input_kind(req: Requirement) -> dict:
     """The input file's own kind. An obligation verb overrides "information", as it overrides the classifier."""
     if req.kind == "information" and OBLIGATION.search(req.text):
@@ -132,7 +143,11 @@ def report(results: list[Result], profile=None) -> dict:
     doc = {
         "tool": "speclint",
         "schema_version": 2,
-        "profile": {"name": profile.name, "ears": profile.ears},
+        "profile": {
+            "name": profile.name,
+            "ears": profile.ears,
+            "labels": profile.labels,
+        },
         "categories": CATEGORIES,
         "rules": {
             k: {
@@ -161,6 +176,7 @@ def report(results: list[Result], profile=None) -> dict:
                     for f in r.findings
                 ],
                 **({"ears": {"pattern": r.ears}} if r.ears else {}),
+                **({"integrity": lv} if (lv := integrity(r.req.text)) else {}),
                 **({"classification": _input_kind(r.req)} if r.req.kind else {}),
             }
             for r in results
@@ -191,9 +207,21 @@ def rescore(doc: dict) -> dict:
         "rules": {k: sum(1 for f in active if f["rule"] == k) for k in doc["rules"]},
         "dismissed": sum(1 for r in reqs for f in r["findings"] if f.get("dismissed")),
     }
-    if doc.get("profile", {}).get(
-        "ears"
-    ):  # results written before schema v2 have no profile
+    # results written before schema v2 have no profile
+    if doc.get("profile", {}).get("labels"):
+        counts = {}
+        for r in graded:
+            for name, value in r.get("labels", {}).items():
+                for v in value if isinstance(value, list) else [value]:
+                    counts.setdefault(name, {}).setdefault(v, 0)
+                    counts[name][v] += 1
+        doc["summary"]["labels"] = counts
+        doc["summary"]["safety_without_level"] = sum(
+            1
+            for r in graded
+            if r.get("labels", {}).get("safety") == "yes" and "integrity" not in r
+        )
+    if doc.get("profile", {}).get("ears"):
         from .ears import PATTERNS
 
         seen = [r["ears"]["pattern"] for r in graded if "ears" in r]

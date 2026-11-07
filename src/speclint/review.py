@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from .checks import OBLIGATION, rescore
+from .checks import OBLIGATION, RULES, rescore
 
 VERDICTS = {"confirmed", "dismissed"}
 KINDS = {"requirement", "information"}
@@ -21,10 +21,11 @@ def needs_kind(r: dict) -> bool:
 
 def batches(doc: dict, out_dir: Path, size: int = 25) -> list[Path]:
     # key = position in the document: IDs repeat across files (e.g. DOORS absolute numbers per module)
-    todo = [
+    labels = doc.get("profile", {}).get("labels", [])
+    todo = [  # with labels on, every requirement needs a review
         (key, r)
         for key, r in enumerate(doc["requirements"])
-        if (r["findings"] or needs_kind(r))
+        if (r["findings"] or needs_kind(r) or labels)
         and r.get("classification", {}).get("kind") != "information"
     ]
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -73,7 +74,12 @@ def batches(doc: dict, out_dir: Path, size: int = 25) -> list[Path]:
                             ],
                         }
                         for key, r in todo[n : n + size]
-                    ]
+                    ],
+                    **(
+                        {"labels": {name: RULES["labels"][name] for name in labels}}
+                        if labels
+                        else {}
+                    ),
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -134,7 +140,43 @@ def merge(doc: dict, review_files: list[Path]) -> tuple[dict, list[str]]:
                     )
                 else:
                     req["classification"] = {"model": "haiku", "kind": rv["kind"]}
+            if "labels" in rv:
+                valid, bad = _labels(
+                    rv["labels"], doc.get("profile", {}).get("labels", [])
+                )
+                problems += [f"{path}: {req['id']}: {b}" for b in bad]
+                if req.get("classification", {}).get("kind") == "information":
+                    req.pop("labels", None)  # information items get no labels
+                elif valid:
+                    req["labels"] = valid
     return rescore(doc), problems
+
+
+def _labels(given, requested: list[str]) -> tuple[dict, list[str]]:
+    """Keep the labels that the profile requested and whose values are allowed; report the rest."""
+    if not isinstance(given, dict):
+        return {}, [f"labels is not an object: {given!r:.80}"]
+    valid, bad = {}, []
+    for name, value in given.items():
+        spec = RULES["labels"].get(name)
+        if spec is None or name not in requested:
+            bad.append(f"label {name!r} was not requested")
+        elif spec.get("multi"):
+            if (
+                isinstance(value, list)
+                and value
+                and all(v in spec["values"] for v in value)
+            ):
+                valid[name] = list(dict.fromkeys(value))
+            else:
+                bad.append(
+                    f"label {name}: {value!r:.60} is not a list of {spec['values']}"
+                )
+        elif isinstance(value, str) and value in spec["values"]:
+            valid[name] = value
+        else:
+            bad.append(f"label {name}: {value!r:.60} is not one of {spec['values']}")
+    return valid, bad
 
 
 def main_merge(results: Path, review_files: list[Path]) -> int:
@@ -147,4 +189,16 @@ def main_merge(results: Path, review_files: list[Path]) -> int:
         f"Merged {reviewed} reviews, {doc['summary']['dismissed']} findings dismissed. "
         f"{doc['summary']['needs_clarification']} of {doc['summary']['graded']} graded items need clarification."
     )
+    s = doc["summary"]
+    if s.get("labels"):
+        print(
+            "Labels: "
+            + " · ".join(
+                f"{name} " + " ".join(f"{v}:{n}" for v, n in counts.items())
+                for name, counts in s["labels"].items()
+            )
+        )
+    if n := s.get("safety_without_level"):
+        noun = "items state" if n > 1 else "item states"
+        print(f"{n} safety-relevant {noun} no ASIL/SIL.")
     return 0

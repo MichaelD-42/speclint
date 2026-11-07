@@ -16,7 +16,8 @@
       "additionalProperties": false,
       "properties": {
         "name": { "type": "string" },
-        "ears": { "type": "boolean", "description": "EARS conformance checked (--ears)." }
+        "ears": { "type": "boolean", "description": "EARS conformance checked (--ears)." },
+        "labels": { "type": "array", "items": { "type": "string" }, "description": "Labels the profile asks the Haiku reviewer to set (rules.toml [labels])." }
       }
     },
     "categories": {
@@ -64,6 +65,12 @@
           "additionalProperties": { "type": "integer", "minimum": 0 }
         },
         "dismissed": { "type": "integer", "minimum": 0, "description": "Findings dismissed in review, over all items." },
+        "labels": {
+          "description": "With labels in the profile: per label, graded items per value (a multi-value label counts each value).",
+          "type": "object",
+          "additionalProperties": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 1 } }
+        },
+        "safety_without_level": { "type": "integer", "minimum": 0, "description": "Graded items labelled safety-relevant that state no ASIL or SIL." },
         "ears": {
           "description": "With --ears: graded items per EARS pattern (patterns with no items are left out).",
           "type": "object",
@@ -88,6 +95,17 @@
         "lang": { "enum": ["en", "de"] },
         "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
         "grade": { "$ref": "#/$defs/grade" },
+        "integrity": { "type": "string", "description": "ASIL or SIL the text states (\"ASIL B\", \"ASIL B(D)\", \"SIL 2\"); never inferred." },
+        "labels": {
+          "description": "Set by `speclint merge` from the Haiku review; values from rules.toml [labels]. Never affects the grade.",
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+            ]
+          }
+        },
         "ears": {
           "description": "Present with --ears.",
           "type": "object",
