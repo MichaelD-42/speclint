@@ -12,17 +12,8 @@ RULES = tomllib.loads(
     (Path(__file__).parent / "rules.toml").read_text(encoding="utf-8")
 )
 CATEGORIES: dict[str, str] = RULES["categories"]
-PENALTY = {"error": 30, "warning": 15, "info": 3}
-GRADES = [
-    (95, "A+"),
-    (90, "A"),
-    (85, "B+"),
-    (80, "B"),
-    (75, "C+"),
-    (70, "C"),
-    (60, "D"),
-    (0, "F"),
-]
+GRADES = ["A", "B", "C", "D", "F"]
+NONE = "none"  # no active findings: not a top grade, nothing was detected
 MODELS = {"en": "en_core_web_sm", "de": "de_core_news_sm"}
 
 _DE_HINTS = {
@@ -85,6 +76,9 @@ class Finding:
     match: str
     start: int
     end: int
+    # whole-spec rules: the other affected items, [{"key", "id"}]
+    related: list[dict] = field(default_factory=list)
+    message: str = ""  # overrides the rule's message (EARS names what's missing)
 
     @property
     def spec(self) -> dict:
@@ -96,35 +90,42 @@ class Result:
     req: Requirement
     lang: str
     findings: list[Finding] = field(default_factory=list)
+    ears: str | None = None  # EARS pattern, with --ears only
 
 
-def grade(score: float) -> str:
-    return next(g for limit, g in GRADES if score >= limit)
+def grade(findings: list[dict]) -> str:
+    """Worst severity cap among active findings, one letter lower per extra distinct warning/error rule."""
+    active = [f for f in findings if not f.get("dismissed")]
+    if not active:
+        return NONE
+    g = RULES["grading"]
+    base = max(GRADES.index(g["caps"][f["severity"]]) for f in active)
+    hard = {f["rule"] for f in active if f["severity"] != "info"}
+    steps = max(0, len(hard) - 1) * g["pileup_step"]
+    return GRADES[min(base + steps, len(GRADES) - 1)]
 
 
-def score(findings: list[dict], category: str | None = None) -> int:
-    """Score from report findings; findings dismissed by a review don't count."""
-    return max(
-        0,
-        100
-        - sum(
-            PENALTY[f["severity"]]
-            for f in findings
-            if not f.get("dismissed")
-            and (category is None or f["category"] == category)
-        ),
-    )
+def _default_profile():
+    from .profiles import load_profile  # profiles imports RULES from here
+
+    return load_profile()
 
 
-def report(results: list[Result]) -> dict:
+def report(results: list[Result], profile=None) -> dict:
     """The results document: what the CLI writes, reviewers annotate and the viewer shows."""
+    profile = profile or _default_profile()
+    sev = profile.severities
     doc = {
         "tool": "speclint",
-        "schema_version": 1,
+        "schema_version": 2,
+        "profile": {"name": profile.name, "ears": profile.ears},
         "categories": CATEGORIES,
         "rules": {
-            k: {f: v[f] for f in ("category", "incose", "severity", "message")}
-            for k, v in RULES["rules"].items()
+            k: {
+                **{f: RULES["rules"][k][f] for f in ("category", "incose", "message")},
+                "severity": s,
+            }
+            for k, s in sev.items()
         },
         "requirements": [
             {
@@ -138,13 +139,14 @@ def report(results: list[Result]) -> dict:
                         "match": f.match,
                         "start": f.start,
                         "end": f.end,
-                        **{
-                            k: f.spec[k]
-                            for k in ("severity", "category", "incose", "message")
-                        },
+                        "severity": sev[f.rule],
+                        **{k: f.spec[k] for k in ("category", "incose", "message")},
+                        **({"related": f.related} if f.related else {}),
+                        **({"message": f.message} if f.message else {}),
                     }
                     for f in r.findings
                 ],
+                **({"ears": {"pattern": r.ears}} if r.ears else {}),
             }
             for r in results
         ],
@@ -153,36 +155,34 @@ def report(results: list[Result]) -> dict:
 
 
 def rescore(doc: dict) -> dict:
-    """(Re)compute per-requirement and summary scores. Items classified as information are not graded."""
+    """(Re)grade every item and rebuild the summary. Items classified as information are not graded."""
     reqs = doc["requirements"]
     for r in reqs:
-        r["score"] = score(r["findings"])
-        r["grade"] = grade(r["score"])
-        r["categories"] = {k: score(r["findings"], k) for k in CATEGORIES}
+        r["grade"] = grade(r["findings"])
     graded = [
         r for r in reqs if r.get("classification", {}).get("kind") != "information"
     ]
-    # round before grading so the grade, the printed score and --fail-under agree
-    overall = round(sum(r["score"] for r in graded) / len(graded), 1) if graded else 100
     active = [f for r in graded for f in r["findings"] if not f.get("dismissed")]
     doc["summary"] = {
         "requirements": len(reqs),
         "graded": len(graded),
-        "with_findings": sum(
-            1 for r in graded if any(not f.get("dismissed") for f in r["findings"])
-        ),
-        "score": overall,
-        "grade": grade(overall),
-        "categories": {
-            k: round(sum(r["categories"][k] for r in graded) / len(graded), 1)
-            if graded
-            else 100
-            for k in CATEGORIES
+        "needs_clarification": sum(1 for r in graded if r["grade"] != NONE),
+        "grades": {
+            g: sum(1 for r in graded if r["grade"] == g) for g in GRADES + [NONE]
         },
-        "grades": {g: sum(1 for r in graded if r["grade"] == g) for _, g in GRADES},
-        "rules": {k: sum(1 for f in active if f["rule"] == k) for k in RULES["rules"]},
+        "categories": {
+            k: sum(1 for f in active if f["category"] == k) for k in CATEGORIES
+        },
+        "rules": {k: sum(1 for f in active if f["rule"] == k) for k in doc["rules"]},
         "dismissed": sum(1 for r in reqs for f in r["findings"] if f.get("dismissed")),
     }
+    if doc.get("profile", {}).get(
+        "ears"
+    ):  # results written before schema v2 have no profile
+        from .ears import PATTERNS
+
+        seen = [r["ears"]["pattern"] for r in graded if "ears" in r]
+        doc["summary"]["ears"] = {p: n for p in PATTERNS if (n := seen.count(p))}
     return doc
 
 
@@ -289,6 +289,83 @@ def _passive_no_actor(doc, lang: str) -> list[Finding]:
     return out
 
 
+_SLASHED = re.compile(r"(?<![^\s(])[^\s/()]+(?:/+[^\s/()]+)+")  # whole slashed token
+_PARENS = re.compile(r"\(([^()]*)\)")
+
+
+def _oblique(text: str) -> list[Finding]:
+    """word/word; not units (km/h), numbers (12/05), paths or URLs, and not and/or (ambiguous-combinator)."""
+    t = RULES["tolerance"]
+    skip = set(t["rates"]) | set(t["units"]) | {"and/or", "und/oder"}
+    out = []
+    for m in _SLASHED.finditer(text):
+        word = m.group(0).rstrip(".,;:!?")
+        parts = word.split("/")
+        if (
+            word.lower() in skip
+            or "//" in word
+            or len(parts) > 2
+            or word.replace("/", "").isupper()  # I/O, TCP/IP: fixed technical names
+            or "." in parts[0]  # host/path: www.example.com/docs
+            or any(p[:1].isdigit() for p in parts)
+        ):
+            continue
+        out.append(Finding("oblique", word, m.start(), m.start() + len(word)))
+    return out
+
+
+def _parenthetical(text: str) -> list[Finding]:
+    return [
+        Finding("parenthetical", m.group(0), m.start(), m.end())
+        for m in _PARENS.finditer(text)
+        if len(m.group(1).split()) > 3
+    ]
+
+
+def _modals(doc, lang: str, active: set[str]) -> list[Finding]:
+    def is_modal(t, words):
+        if lang == "en":
+            return t.tag_ == "MD" and t.lower_ in words
+        return t.lower_ in words
+
+    def future(t):  # "wird speichern", not the passive "wird gespeichert"
+        return t.lemma_ == "werden" and any(
+            c.tag_ == "VVINF" and c.dep_ == "oc" for c in t.children
+        )
+
+    out = []
+    if "single-thought" in active:
+        words = set(RULES["rules"]["single-thought"][lang]["obligation"])
+        out += [
+            _span("single-thought", doc, t, t.head)
+            for t in [t for t in doc if is_modal(t, words)][1:]
+        ]
+    for rule in ("weak-obligation", "soll-obligation"):
+        words = set(RULES["rules"][rule].get(lang, {}).get("weak", []))
+        if rule in active and words:
+            out += [
+                Finding(rule, t.text, t.idx, t.idx + len(t.text))
+                for t in doc
+                if is_modal(t, words) or (rule == "weak-obligation" and future(t))
+            ]
+    return out
+
+
+def _purpose_de(doc) -> list[Finding]:
+    """ "um … zu" (KOUI, spans to its infinitive) and the conjunction "damit" (KOUS, not the adverb)."""
+    return [
+        _span("purpose-phrase", doc, t, t.head)
+        if t.tag_ == "KOUI"
+        else Finding("purpose-phrase", t.text, t.idx, t.idx + len(t.text))
+        for t in doc
+        if (t.tag_ == "KOUI" and t.lower_ == "um")
+        or (t.tag_ == "KOUS" and t.lower_ == "damit")
+    ]
+
+
+_SPANNING = {"passive-no-actor", "purpose-phrase", "single-thought"}
+
+
 def _span(rule: str, doc, t1, t2) -> Finding:
     """Finding covering two tokens in text order; match is the exact text between them."""
     a, b = sorted([t1, t2], key=lambda t: t.i)
@@ -297,10 +374,12 @@ def _span(rule: str, doc, t1, t2) -> Finding:
     )
 
 
-def check_doc(doc, lang: str) -> list[Finding]:
+def check_doc(doc, lang: str, active: set[str]) -> list[Finding]:
     text = doc.text
     findings = []
     for rule, spec in RULES["rules"].items():
+        if rule not in active:
+            continue
         data = spec.get(lang, {})
         if rx := _phrase_re(lang, rule):
             findings += [
@@ -321,15 +400,22 @@ def check_doc(doc, lang: str) -> list[Finding]:
                 and t.tag_ not in ("WDT", "WP")  # relative "that/which"
                 and t.dep_ != "ep"
             ]  # German expletive "es"
-    findings += _missing_tolerance(text, lang)
-    findings += _passive_no_actor(doc, lang)
+    if "missing-tolerance" in active:
+        findings += _missing_tolerance(text, lang)
+    if "passive-no-actor" in active:
+        findings += _passive_no_actor(doc, lang)
+    findings += _modals(doc, lang, active)
+    if "oblique" in active:
+        findings += _oblique(text)
+    if "parenthetical" in active:
+        findings += _parenthetical(text)
+    if "purpose-phrase" in active and lang == "de":
+        findings += _purpose_de(doc)
     # one finding per span: phrase and lemma lists may overlap (e.g. "so schnell wie möglich")
     findings.sort(key=lambda f: (f.start, -(f.end - f.start)))
     kept, last_end = [], -1
     for f in findings:
-        if (
-            f.rule == "passive-no-actor"
-        ):  # spans whole clauses; must not hide findings inside it
+        if f.rule in _SPANNING:  # spans whole clauses; must not hide findings inside it
             kept.append(f)
         elif f.start >= last_end:
             kept.append(f)
@@ -337,7 +423,9 @@ def check_doc(doc, lang: str) -> list[Finding]:
     return kept
 
 
-def check(reqs: list[Requirement], lang: str = "auto") -> list[Result]:
+def check(reqs: list[Requirement], lang: str = "auto", profile=None) -> list[Result]:
+    profile = profile or _default_profile()
+    active = set(profile.severities)
     langs = [detect_lang(r.text) if lang == "auto" else lang for r in reqs]
     majority = "de" if langs.count("de") > langs.count("en") else "en"
     results = [Result(r, code or majority) for r, code in zip(reqs, langs)]
@@ -346,5 +434,15 @@ def check(reqs: list[Requirement], lang: str = "auto") -> list[Result]:
         for res, doc in (
             zip(group, nlp(code).pipe(r.req.text for r in group)) if group else ()
         ):
-            res.findings = check_doc(doc, code)
+            res.findings = check_doc(doc, code, active)
+    from .spec_checks import check_spec  # imports Finding/Result from here
+
+    check_spec(results, active)
+    if profile.ears:
+        from .ears import ears_pattern
+
+        for res in results:
+            res.ears, finding = ears_pattern(res.req.text, res.lang)
+            if finding:
+                res.findings.append(finding)
     return results

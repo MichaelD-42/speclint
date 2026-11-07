@@ -1,7 +1,7 @@
 """Benchmark on PROMISE_exp (969 English requirements, labelled F/NFR type; no quality labels).
 
 Reports runtime, hit rate per rule and a random sample of hits per rule for manual precision review.
-Usage: uv run python bench/promise.py [samples-per-rule]
+Usage: uv run python bench/promise.py [samples-per-rule] [profile]
 """
 
 import csv
@@ -12,7 +12,8 @@ import urllib.request
 from collections import Counter
 from pathlib import Path
 
-from speclint.checks import RULES, Requirement, check, report
+from speclint.checks import Requirement, check, report
+from speclint.profiles import load_profile
 
 URL = "https://raw.githubusercontent.com/AleksandarMitrevski/se-requirements-classification/master/0-datasets/PROMISE_exp/PROMISE_exp.arff"
 DATA = Path(__file__).parent / "data" / "PROMISE_exp.arff"
@@ -38,20 +39,21 @@ def load() -> list[Requirement]:
     ]
 
 
-def main(samples: int = 5) -> None:
+def main(samples: int = 5, profile: str = "system") -> None:
+    p = load_profile(profile)
     reqs = load()
     t = time.perf_counter()
-    results = check(reqs, "en")
+    results = check(reqs, "en", p)
     elapsed = time.perf_counter() - t
-    s = report(results)["summary"]
+    s = report(results, p)["summary"]
     print(
-        f"{len(results)} requirements in {elapsed:.2f}s ({len(results) / elapsed:.0f}/s). Overall {s['grade']} ({s['score']:.0f}%)"
+        f"{len(results)} requirements in {elapsed:.2f}s ({len(results) / elapsed:.0f}/s). Grades {s['grades']}"
     )
     print(f"{sum(1 for r in results if r.findings)} with findings\n")
 
     hits = Counter(f.rule for r in results for f in r.findings)
     rng = random.Random(0)
-    for rule in RULES["rules"]:
+    for rule in p.severities:
         found = [(r, f) for r in results for f in r.findings if f.rule == rule]
         print(
             f"== {rule}: {hits[rule]} hits in {len({id(r) for r, _ in found})} requirements"
@@ -61,4 +63,4 @@ def main(samples: int = 5) -> None:
 
 
 if __name__ == "__main__":
-    main(*map(int, sys.argv[1:]))
+    main(*[int(a) if a.isdigit() else a for a in sys.argv[1:]])

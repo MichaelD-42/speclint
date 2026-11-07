@@ -1,10 +1,14 @@
 import pytest
+from conftest import item_only
 
 from speclint.checks import Requirement, check, detect_lang, grade, report, rescore
 
 
-def rules(text, lang):
-    return [f.rule for f in check([Requirement("X", text)], lang)[0].findings]
+def rules(text, lang, profile="system"):
+    return [
+        f.rule
+        for f in check([Requirement("X", text)], lang, item_only(profile))[0].findings
+    ]
 
 
 @pytest.mark.parametrize(
@@ -58,6 +62,61 @@ def rules(text, lang):
         ("de", "Das Steuergerät muss jederzeit erreichbar sein.", "absolute"),
         ("en", "The supply voltage shall be 12 V.", "missing-tolerance"),
         ("de", "Die Versorgungsspannung muss 12 V betragen.", "missing-tolerance"),
+        ("en", "The ECU shall stop the motor immediately.", "temporal-word"),
+        ("de", "Das Steuergerät muss den Motor sofort stoppen.", "temporal-word"),
+        (
+            "en",
+            "The ECU shall log errors in order to support diagnosis.",
+            "purpose-phrase",
+        ),
+        (
+            "de",
+            "Das Steuergerät muss Fehler speichern, um die Diagnose zu unterstützen.",
+            "purpose-phrase",
+        ),
+        (
+            "de",
+            "Das Steuergerät muss Fehler speichern, damit die Werkstatt sie auslesen kann.",
+            "purpose-phrase",
+        ),
+        ("en", "The ECU shall be able to store 100 errors.", "superfluous-infinitive"),
+        (
+            "de",
+            "Das Steuergerät muss in der Lage sein, 100 Fehler zu speichern.",
+            "superfluous-infinitive",
+        ),
+        ("en", "The ECU shall wake up unless the battery is low.", "clause-combinator"),
+        (
+            "de",
+            "Das Steuergerät muss aufwachen, es sei denn, die Batterie ist leer.",
+            "clause-combinator",
+        ),
+        (
+            "en",
+            "The ECU shall store the error and shall notify the gateway.",
+            "single-thought",
+        ),
+        (
+            "de",
+            "Das Steuergerät muss den Fehler speichern und muss das Gateway informieren.",
+            "single-thought",
+        ),
+        ("en", "The ECU should store the error.", "weak-obligation"),
+        ("de", "Das Steuergerät sollte den Fehler speichern.", "weak-obligation"),
+        ("de", "Das Steuergerät wird den Fehler speichern.", "weak-obligation"),
+        ("de", "Das Steuergerät soll den Fehler speichern.", "soll-obligation"),
+        ("en", "The ECU shall report speed/position to the gateway.", "oblique"),
+        ("de", "Das Steuergerät muss Drehzahl/Position melden.", "oblique"),
+        (
+            "en",
+            "The ECU shall store the error (including the time stamp and the voltage).",
+            "parenthetical",
+        ),
+        (
+            "de",
+            "Das Steuergerät muss den Fehler (mit Zeitstempel und Spannung) speichern.",
+            "parenthetical",
+        ),
     ],
 )
 def test_rule_fires(lang, text, rule):
@@ -96,28 +155,59 @@ def test_detect_lang():
     assert detect_lang("The ECU shall store the data.") == "en"
 
 
-def test_grading():
+def f(rule, severity, dismissed=False):
+    return {"rule": rule, "severity": severity, "dismissed": dismissed}
+
+
+def test_grade_caps_and_pileup():
+    assert grade([]) == "none"
+    assert grade([f("passive-no-actor", "info")]) == "A"
+    assert grade([f("vague-term", "warning")]) == "B"
+    assert grade([f("escape-clause", "error")]) == "D"
+    assert grade([f("vague-term", "warning"), f("absolute", "warning")]) == "C"
+    assert grade([f("vague-term", "warning"), f("vague-term", "warning")]) == "B"
+    assert (
+        grade(
+            [
+                f("vague-term", "warning"),
+                f("passive-no-actor", "info"),
+                f("undefined-condition", "info"),
+            ]
+        )
+        == "B"
+    )
+    assert grade([f("escape-clause", "error"), f("vague-term", "warning")]) == "F"
+    assert grade([f(r, "warning") for r in ("a", "b", "c", "d", "e", "g")]) == "F"
+    assert grade([f("escape-clause", "error", dismissed=True)]) == "none"
+
+
+def test_item_grades_and_summary():
+    # no acronyms: undefined-acronym is part of the customer profile
     doc = report(
         check(
             [
-                Requirement("X", "The ECU shall start within 200 ms where possible."),
-                Requirement("Y", "The ECU shall start within 200 ms."),
-            ],
-            "en",
+                Requirement(
+                    "X", "The controller shall start within 200 ms where possible."
+                ),
+                Requirement("Y", "The controller shall start within 200 ms."),
+                Requirement("Z", "Dies muss mit ausreichender Genauigkeit erfolgen."),
+            ]
         )
     )
-    x = doc["requirements"][0]
-    assert x["score"] == 70 and x["grade"] == "C"
-    assert x["categories"]["completeness"] == 70 and x["categories"]["accuracy"] == 100
-    assert doc["summary"]["score"] == 85 and doc["summary"]["grade"] == "B+"
-    assert grade(100) == "A+" and grade(59) == "F"
+    assert [r["grade"] for r in doc["requirements"]] == ["D", "none", "C"]
+    s = doc["summary"]
+    assert s["needs_clarification"] == 2
+    assert s["grades"] == {"A": 0, "B": 0, "C": 1, "D": 1, "F": 0, "none": 1}
+    assert s["categories"]["completeness"] == 1
+    assert s["categories"]["non_ambiguity"] == 1
+    assert "score" not in s and "score" not in doc["requirements"][0]
 
 
 def test_information_items_are_not_graded():
     doc = report(
         check(
             [
-                Requirement("X", "The ECU shall start quickly."),
+                Requirement("X", "The controller shall start quickly."),
                 Requirement("Y", "This chapter is quickly read."),
             ],
             "en",
@@ -125,7 +215,7 @@ def test_information_items_are_not_graded():
     )
     doc["requirements"][1]["classification"] = {"kind": "information"}
     s = rescore(doc)["summary"]
-    assert (s["requirements"], s["graded"], s["score"]) == (2, 1, 85)
+    assert (s["requirements"], s["graded"], s["needs_clarification"]) == (2, 1, 1)
 
 
 def test_passive_span_does_not_hide_findings_inside_it():
@@ -170,9 +260,9 @@ def test_bound_on_first_value_does_not_cover_the_next(lang, text):
     ] == ["12 V"]
 
 
-def test_nothing_graded_gives_full_category_scores():
+def test_nothing_graded_gives_empty_summary():
     s = report(check([]))["summary"]
-    assert s["score"] == 100 and set(s["categories"].values()) == {100}
+    assert s["graded"] == 0 and set(s["categories"].values()) == {0}
 
 
 @pytest.mark.parametrize(
@@ -247,8 +337,54 @@ def test_asymmetric_tolerance_is_bounded(lang, text):
     assert "missing-tolerance" not in rules(text, lang)
 
 
-def test_overall_grade_matches_the_reported_score():
-    reqs = [Requirement(str(i), "The ECU shall start quickly.") for i in range(99)]
-    reqs.append(Requirement("Z", "The ECU shall start quickly. Data shall be stored."))
-    s = report(check(reqs, "en"))["summary"]
-    assert (s["score"], s["grade"]) == (85.0, "B+")
+def test_um_zu_span_does_not_hide_a_vague_term_inside_it():
+    found = rules(
+        "Das Steuergerät muss Fehler speichern, um eine schnelle Diagnose zu ermöglichen.",
+        "de",
+    )
+    assert {"purpose-phrase", "vague-term"} <= set(found)
+
+
+def test_customer_profile_has_temporal_word_but_not_purpose_phrase():
+    assert rules(
+        "The ECU shall log errors in order to support diagnosis immediately.",
+        "en",
+        "customer",
+    ) == ["temporal-word"]
+
+
+@pytest.mark.parametrize(
+    "lang,text",
+    [
+        ("en", "The ECU shall store the last will of the user."),  # noun "will"
+        ("en", "The ECU shall store the date of 1 May."),  # month
+        ("de", "Der Fehler wird vom Steuergerät gespeichert."),  # passive, not future
+    ],
+)
+def test_modal_rules_do_not_fire(lang, text):
+    assert not {"weak-obligation", "single-thought"} & set(rules(text, lang))
+
+
+def test_single_thought_keeps_weak_obligation_visible():
+    found = rules("The ECU shall store the error and should notify the gateway.", "en")
+    assert {"single-thought", "weak-obligation"} <= set(found)
+
+
+def test_soll_is_binding_in_customer_profile():
+    assert "soll-obligation" not in rules(
+        "Das Steuergerät soll den Fehler speichern.", "de", "customer"
+    )
+
+
+@pytest.mark.parametrize(
+    "lang,text",
+    [
+        ("en", "The vehicle shall reach 100 km/h within 10 s ± 1 s."),
+        ("en", "The ECU shall accept dates like 12/05 and ratios like 1/2."),
+        ("en", "The ECU shall load its firmware from https://host/fw and src/main/fw."),
+        ("en", "The ECU shall send and/or log the error."),  # ambiguous-combinator only
+        ("de", "Das Steuergerät (ECU) muss starten."),
+    ],
+)
+def test_oblique_and_parenthetical_do_not_fire(lang, text):
+    assert not {"oblique", "parenthetical"} & set(rules(text, lang))

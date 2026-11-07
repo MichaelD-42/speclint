@@ -41,6 +41,21 @@ def batches(doc: dict, out_dir: Path, size: int = 25) -> list[Path]:
                                     "incose": f["incose"],
                                     "severity": f["severity"],
                                     "message": f["message"],
+                                    **(
+                                        {
+                                            "related": [
+                                                {
+                                                    "id": x["id"],
+                                                    "text": doc["requirements"][
+                                                        x["key"]
+                                                    ]["text"],
+                                                }
+                                                for x in f["related"]
+                                            ]
+                                        }
+                                        if f.get("related")
+                                        else {}
+                                    ),
                                 }
                                 for i, f in enumerate(r["findings"])
                             ],
@@ -108,6 +123,6 @@ def main_merge(results: Path, review_files: list[Path]) -> int:
     reviewed = sum(1 for r in doc["requirements"] if "review" in r)
     print(
         f"Merged {reviewed} reviews, {doc['summary']['dismissed']} findings dismissed. "
-        f"Overall {doc['summary']['grade']} ({doc['summary']['score']}%)"
+        f"{doc['summary']['needs_clarification']} of {doc['summary']['graded']} graded items need clarification."
     )
     return 0

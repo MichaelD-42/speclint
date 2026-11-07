@@ -4,38 +4,50 @@ import sys
 import zipfile
 from pathlib import Path
 
-from .checks import check, report, rescore
+from .checks import GRADES, NONE, check, report, rescore
+from .profiles import load_profile
 from .readers import read
 from .review import batches, main_merge
 
 
 def text_report(doc: dict, verbose: bool) -> str:
-    out = []
+    p = doc["profile"]
+    out = [f"Profile: {p['name']}" + (", EARS" if p["ears"] else "")]
     for r in doc["requirements"]:
         kind = r.get("classification", {}).get("kind")
-        if not verbose and (not r["findings"] or kind == "information"):
+        if not verbose and (r["grade"] == NONE or kind == "information"):
             continue
-        tag = "info item" if kind == "information" else f"{r['grade']} {r['score']}%"
+        tag = (
+            "info item"
+            if kind == "information"
+            else "no findings"
+            if r["grade"] == NONE
+            else r["grade"]
+        )
         out.append(f"{r['id']}  [{tag}]  {r['text']}")
         for f in r["findings"]:
             mark = " (dismissed)" if f.get("dismissed") else ""
+            if rel := [x["id"] for x in f.get("related", [])]:
+                more = f", +{len(rel) - 5} more" if len(rel) > 5 else ""
+                mark = f" (also {', '.join(rel[:5])}{more})" + mark
             out.append(
                 f'    {f["severity"]:<7} {f["rule"]:<22} {f["incose"]:<9} "{f["match"]}"  {f["message"]}{mark}'
             )
     s = doc["summary"]
     out += [
         "",
-        (
-            f"{s['requirements']} items, {s['graded']} graded, {s['with_findings']} with findings. "
-            f"Overall {s['grade']} ({s['score']:.0f}%)"
+        f"{s['graded']} graded items, {s['needs_clarification']} need clarification.",
+        "  Grades: "
+        + "  ".join(
+            f"{'no findings' if g == NONE else g}:{n}"
+            for g, n in s["grades"].items()
+            if n
         ),
+        "  Findings per category:",
     ]
-    out += [
-        f"  {doc['categories'][k]:<14} {v:5.1f}%" for k, v in s["categories"].items()
-    ]
-    out.append(
-        "  Grades: " + "  ".join(f"{g}:{n}" for g, n in s["grades"].items() if n)
-    )
+    out += [f"    {doc['categories'][k]:<14} {n}" for k, n in s["categories"].items()]
+    if "ears" in s:
+        out.append("  EARS: " + "  ".join(f"{p}:{n}" for p, n in s["ears"].items()))
     return "\n".join(out)
 
 
@@ -48,6 +60,12 @@ def main(argv: list[str] | None = None) -> int:
     c = sub.add_parser("check", help="check requirement files")
     c.add_argument("files", nargs="+", type=Path)
     c.add_argument("--lang", choices=["auto", "en", "de"], default="auto")
+    c.add_argument(
+        "--profile",
+        default="customer",
+        help="built-in profile (customer, system) or a profile TOML file",
+    )
+    c.add_argument("--ears", action="store_true", help="also check EARS conformance")
     c.add_argument("--id-col", help="CSV column holding the requirement ID")
     c.add_argument("--text-col", help="CSV column holding the requirement text")
     c.add_argument(
@@ -57,10 +75,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     c.add_argument("-o", "--output", type=Path, help="write the results JSON here")
     c.add_argument(
-        "--fail-under",
-        type=int,
-        default=0,
-        help="exit 1 if the overall score is below this percentage",
+        "--fail-on",
+        choices=GRADES,
+        help="exit 1 if any graded item has this grade or worse",
     )
     c.add_argument(
         "-v", "--verbose", action="store_true", help="also list items without findings"
@@ -93,8 +110,9 @@ def main(argv: list[str] | None = None) -> int:
         return main_merge(a.results, a.reviews)
 
     try:
+        profile = load_profile(a.profile, a.ears)
         reqs = [r for f in a.files for r in read(f, a.id_col, a.text_col)]
-    # unreadable input (unsupported format, missing column or file, broken XML or zip): exit 2, not the --fail-under code
+    # unreadable input (unsupported format, missing column or file, broken XML or zip): exit 2, not the --fail-on code
     except (ValueError, OSError, SyntaxError, zipfile.BadZipFile) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
@@ -104,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
-    doc = report(check(reqs, a.lang))
+    doc = report(check(reqs, a.lang, profile), profile)
     if a.classify:
         from .classify import classify
 
@@ -123,7 +141,13 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
-    return 1 if doc["summary"]["score"] < a.fail_under else 0
+    worst = [
+        GRADES.index(r["grade"])
+        for r in doc["requirements"]
+        if r["grade"] != NONE
+        and r.get("classification", {}).get("kind") != "information"
+    ]
+    return 1 if a.fail_on and worst and max(worst) >= GRADES.index(a.fail_on) else 0
 
 
 if __name__ == "__main__":
