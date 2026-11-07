@@ -95,3 +95,13 @@ de.phrases = ["unter allen Umständen", "in jedem Fall", "zu jeder Zeit", "ohne 
 units = ["ms", "µs", "us", "ns", "s", "sec", "min", "h", "Hz", "kHz", "MHz", "GHz", "V", "mV", "kV", "A", "mA", "µA", "W", "mW", "kW", "Wh", "kWh", "Ah", "mAh", "°C", "K", "m", "mm", "cm", "km", "µm", "km/h", "m/s", "m/s²", "kg", "g", "t", "N", "Nm", "bar", "mbar", "Pa", "kPa", "%", "dB", "dBm", "lx", "cd", "rpm", "U/min", "bit", "Bit", "byte", "Byte", "kB", "MB", "GB", "kbit/s", "Mbit/s", "fps", "Ω", "kΩ"]
 en.bounds = ["max", "maximum", "min", "minimum", "at least", "at most", "within", "less than", "more than", "greater than", "lower than", "higher than", "up to", "no more than", "no less than", "not exceed", "not more than", "not less than", "between", "below", "above", "under", "over", "exceed", "exceeds", "≤", "≥", "<", ">", "±", "+/-", "+-"]
 de.bounds = ["max", "max.", "maximal", "höchstens", "min", "min.", "mindestens", "minimal", "innerhalb", "weniger als", "mehr als", "kleiner", "größer", "unter", "über", "bis", "zwischen", "nicht überschreiten", "nicht unterschreiten", "≤", "≥", "<", ">", "±", "+/-", "+-"]
+
+# Profiles: which rules run, at which severity (= grade cap). `--profile <name|file.toml>`; a custom file
+# uses a [profile] table with the same keys. Resolution: extends, then rules (replace), enable, disable, severity.
+[profiles.customer]
+rules = ["vague-term", "missing-tolerance", "escape-clause", "open-ended", "undefined-condition", "ambiguous-combinator", "unresolved-reference", "passive-no-actor", "absolute"]
+
+[profiles.system]
+extends = "customer"
+enable = []
+severity = { passive-no-actor = "warning" }

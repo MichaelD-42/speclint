@@ -4,18 +4,28 @@
   "title": "speclint results",
   "description": "Output of `speclint check`, optionally extended by `--classify` and `speclint merge`. Each item is graded from the severity caps of its active findings; an item without active findings gets \"none\".",
   "type": "object",
-  "required": ["tool", "schema_version", "categories", "rules", "requirements", "summary"],
+  "required": ["tool", "schema_version", "profile", "categories", "rules", "requirements", "summary"],
   "additionalProperties": false,
   "properties": {
     "tool": { "const": "speclint" },
     "schema_version": { "const": 2 },
+    "profile": {
+      "description": "Profile the run used: a built-in name or the path of a profile file. Grades from different profiles are not comparable.",
+      "type": "object",
+      "required": ["name", "ears"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "ears": { "type": "boolean", "description": "EARS conformance checked (--ears)." }
+      }
+    },
     "categories": {
       "description": "Category key to display name.",
       "type": "object",
       "additionalProperties": { "type": "string" }
     },
     "rules": {
-      "description": "Rule key to rule definition, for every rule that can produce a finding.",
+      "description": "Rule key to rule definition with its effective severity, for every rule the profile runs.",
       "type": "object",
       "additionalProperties": {
         "type": "object",

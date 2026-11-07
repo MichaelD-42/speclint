@@ -55,6 +55,24 @@ With `-o results.json`, the same goes to one JSON file defined by [`schema/resul
 
 Each finding caps the grade of its item: an error at D, a warning at B, an info at A. The item gets the worst cap, then one letter lower for each further distinct warning or error rule, down to F. Infos and repeated hits of the same rule don't lower it further. An item without findings gets "no findings". The caps live in `rules.toml` under `[grading]`. The language is detected for each item; an item too short to tell takes the language of most items in the run. You can also set it with `--lang`.
 
+## Profiles
+
+A profile decides which rules run and how severe each one is. Since severity caps the grade, it also decides how strict the grades are. Pick one with `--profile`:
+
+- `customer` (default): for customer specifications and Lastenhefte. Its rules find what to ask the customer.
+- `system`: for system and software requirements. It runs everything in `customer` plus the style rules, and passives without an actor become warnings.
+
+Your own profile is a TOML file with a `[profile]` table, passed as `--profile acme.toml`:
+
+```toml
+[profile]
+extends = "system"
+disable = ["passive-no-actor"]
+severity = { vague-term = "error" }
+```
+
+`rules` replaces the inherited rule list, `enable` and `disable` add and remove rules, and `severity` overrides them. An unknown rule, severity or profile exits 2. The results JSON records the profile, because grades from different profiles aren't comparable.
+
 ## How a review runs
 
 Three stages run in this order; only the first always runs.

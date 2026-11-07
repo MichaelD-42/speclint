@@ -5,12 +5,14 @@ import zipfile
 from pathlib import Path
 
 from .checks import GRADES, NONE, check, report, rescore
+from .profiles import load_profile
 from .readers import read
 from .review import batches, main_merge
 
 
 def text_report(doc: dict, verbose: bool) -> str:
-    out = []
+    p = doc["profile"]
+    out = [f"Profile: {p['name']}" + (", EARS" if p["ears"] else "")]
     for r in doc["requirements"]:
         kind = r.get("classification", {}).get("kind")
         if not verbose and (r["grade"] == NONE or kind == "information"):
@@ -53,6 +55,12 @@ def main(argv: list[str] | None = None) -> int:
     c = sub.add_parser("check", help="check requirement files")
     c.add_argument("files", nargs="+", type=Path)
     c.add_argument("--lang", choices=["auto", "en", "de"], default="auto")
+    c.add_argument(
+        "--profile",
+        default="customer",
+        help="built-in profile (customer, system) or a profile TOML file",
+    )
+    c.add_argument("--ears", action="store_true", help="also check EARS conformance")
     c.add_argument("--id-col", help="CSV column holding the requirement ID")
     c.add_argument("--text-col", help="CSV column holding the requirement text")
     c.add_argument(
@@ -97,8 +105,9 @@ def main(argv: list[str] | None = None) -> int:
         return main_merge(a.results, a.reviews)
 
     try:
+        profile = load_profile(a.profile, a.ears)
         reqs = [r for f in a.files for r in read(f, a.id_col, a.text_col)]
-    # unreadable input (unsupported format, missing column or file, broken XML or zip): exit 2, not the --fail-under code
+    # unreadable input (unsupported format, missing column or file, broken XML or zip): exit 2, not the --fail-on code
     except (ValueError, OSError, SyntaxError, zipfile.BadZipFile) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
@@ -108,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
-    doc = report(check(reqs, a.lang))
+    doc = report(check(reqs, a.lang, profile), profile)
     if a.classify:
         from .classify import classify
 

@@ -101,15 +101,27 @@ def grade(findings: list[dict]) -> str:
     return GRADES[min(base + steps, len(GRADES) - 1)]
 
 
-def report(results: list[Result]) -> dict:
+def _default_profile():
+    from .profiles import load_profile  # profiles imports RULES from here
+
+    return load_profile()
+
+
+def report(results: list[Result], profile=None) -> dict:
     """The results document: what the CLI writes, reviewers annotate and the viewer shows."""
+    profile = profile or _default_profile()
+    sev = profile.severities
     doc = {
         "tool": "speclint",
         "schema_version": 2,
+        "profile": {"name": profile.name, "ears": profile.ears},
         "categories": CATEGORIES,
         "rules": {
-            k: {f: v[f] for f in ("category", "incose", "severity", "message")}
-            for k, v in RULES["rules"].items()
+            k: {
+                **{f: RULES["rules"][k][f] for f in ("category", "incose", "message")},
+                "severity": s,
+            }
+            for k, s in sev.items()
         },
         "requirements": [
             {
@@ -123,10 +135,8 @@ def report(results: list[Result]) -> dict:
                         "match": f.match,
                         "start": f.start,
                         "end": f.end,
-                        **{
-                            k: f.spec[k]
-                            for k in ("severity", "category", "incose", "message")
-                        },
+                        "severity": sev[f.rule],
+                        **{k: f.spec[k] for k in ("category", "incose", "message")},
                     }
                     for f in r.findings
                 ],
@@ -156,7 +166,7 @@ def rescore(doc: dict) -> dict:
         "categories": {
             k: sum(1 for f in active if f["category"] == k) for k in CATEGORIES
         },
-        "rules": {k: sum(1 for f in active if f["rule"] == k) for k in RULES["rules"]},
+        "rules": {k: sum(1 for f in active if f["rule"] == k) for k in doc["rules"]},
         "dismissed": sum(1 for r in reqs for f in r["findings"] if f.get("dismissed")),
     }
     return doc
@@ -273,10 +283,12 @@ def _span(rule: str, doc, t1, t2) -> Finding:
     )
 
 
-def check_doc(doc, lang: str) -> list[Finding]:
+def check_doc(doc, lang: str, active: set[str]) -> list[Finding]:
     text = doc.text
     findings = []
     for rule, spec in RULES["rules"].items():
+        if rule not in active:
+            continue
         data = spec.get(lang, {})
         if rx := _phrase_re(lang, rule):
             findings += [
@@ -297,8 +309,10 @@ def check_doc(doc, lang: str) -> list[Finding]:
                 and t.tag_ not in ("WDT", "WP")  # relative "that/which"
                 and t.dep_ != "ep"
             ]  # German expletive "es"
-    findings += _missing_tolerance(text, lang)
-    findings += _passive_no_actor(doc, lang)
+    if "missing-tolerance" in active:
+        findings += _missing_tolerance(text, lang)
+    if "passive-no-actor" in active:
+        findings += _passive_no_actor(doc, lang)
     # one finding per span: phrase and lemma lists may overlap (e.g. "so schnell wie möglich")
     findings.sort(key=lambda f: (f.start, -(f.end - f.start)))
     kept, last_end = [], -1
@@ -313,7 +327,8 @@ def check_doc(doc, lang: str) -> list[Finding]:
     return kept
 
 
-def check(reqs: list[Requirement], lang: str = "auto") -> list[Result]:
+def check(reqs: list[Requirement], lang: str = "auto", profile=None) -> list[Result]:
+    active = set((profile or _default_profile()).severities)
     langs = [detect_lang(r.text) if lang == "auto" else lang for r in reqs]
     majority = "de" if langs.count("de") > langs.count("en") else "en"
     results = [Result(r, code or majority) for r, code in zip(reqs, langs)]
@@ -322,5 +337,5 @@ def check(reqs: list[Requirement], lang: str = "auto") -> list[Result]:
         for res, doc in (
             zip(group, nlp(code).pipe(r.req.text for r in group)) if group else ()
         ):
-            res.findings = check_doc(doc, code)
+            res.findings = check_doc(doc, code, active)
     return results
