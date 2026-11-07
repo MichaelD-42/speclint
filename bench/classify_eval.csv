@@ -1,0 +1,71 @@
+id,lang,label,text
+ITEM-01,de,information,Das Türmodul ist innerhalb der Türverkleidung montiert.
+ITEM-02,de,information,Dieses Kapitel beschreibt die Anforderungen an das Türsteuergerät der Fahrertür.
+ITEM-03,en,information,4.2 Power supply
+ITEM-04,de,information,Revision 1.3 – Abschnitt Einklemmschutz nach dem Design-Review überarbeitet.
+ITEM-05,en,information,Comment from purchasing: price target to be discussed in the next meeting.
+ITEM-06,de,requirement,Das Steuergerät wacht auf eine CAN-Botschaft innerhalb von 50 ms ± 5 ms auf.
+ITEM-07,de,requirement,Das Türsteuergerät meldet die Fensterposition alle 100 ms ± 10 ms an das Gateway.
+ITEM-08,de,requirement,Die Spiegelheizung schaltet nach 15 min ± 1 min automatisch ab.
+ITEM-09,en,requirement,Maximum current consumption in sleep mode: 100 µA.
+ITEM-10,de,requirement,Jedes Software-Release wird mit Release Notes ausgeliefert.
+ITEM-11,en,requirement,The ECU detects an open load on the mirror motor output within 1 s.
+ITEM-12,en,information,The anti-pinch function was introduced with the 2019 model year.
+ITEM-13,de,requirement,Der Lieferant liefert die Software mit einer vollständigen SBOM.
+ITEM-14,de,requirement,Maximale Stromaufnahme im Ruhezustand: 100 µA.
+ITEM-15,de,information,Die Werte in dieser Tabelle stammen aus der Vorgängergeneration.
+ITEM-16,en,information,Door control unit – functional overview
+ITEM-17,de,requirement,Der Türschlossaktor wird mit einem PWM-Signal von 1 kHz ± 50 Hz angesteuert.
+ITEM-18,en,requirement,The window closes completely within 4 s ± 0.5 s at 12 V.
+ITEM-19,en,information,Abbreviations and definitions
+ITEM-20,de,requirement,Masse des Türsteuergeräts: max. 250 g.
+ITEM-21,en,requirement,The ECU stops the window lifter within 200 ms ± 20 ms when the anti-pinch protection triggers.
+ITEM-22,en,requirement,It is mandatory that the ECU stores the last ten error codes in non-volatile memory.
+ITEM-23,en,requirement,The supplier delivers the software with a complete SBOM.
+ITEM-24,en,requirement,The mirror heating switches off automatically after 15 min ± 1 min.
+ITEM-25,de,information,Anmerkung Einkauf: Preisziel wird in der nächsten Besprechung diskutiert.
+ITEM-26,en,requirement,Operating temperature: −40 °C to +85 °C.
+ITEM-27,en,requirement,"After a reset, the ECU restores the last window position from memory."
+ITEM-28,en,requirement,Mass of the door control unit: max. 250 g.
+ITEM-29,en,requirement,Each software release is accompanied by release notes listing all changes.
+ITEM-30,de,information,"Begründung: Kunden haben bemängelt, dass das Fenster im Winter zu langsam schließt."
+ITEM-31,en,information,The door module is mounted inside the door trim.
+ITEM-32,de,requirement,Nach einem Reset stellt das Steuergerät die letzte Fensterposition aus dem Speicher wieder her.
+ITEM-33,de,requirement,Versorgungsspannungsbereich: 9 V bis 16 V.
+ITEM-34,en,requirement,The door control unit reports the window position to the gateway every 100 ms ± 10 ms.
+ITEM-35,en,information,Revision 1.3 – updated the anti-pinch section after the design review.
+ITEM-36,de,requirement,"Es ist erforderlich, dass das Steuergerät die letzten zehn Fehlercodes nichtflüchtig speichert."
+ITEM-37,de,information,Der Einklemmschutz wurde mit dem Modelljahr 2019 eingeführt.
+ITEM-38,de,requirement,Das Steuergerät erkennt eine offene Last am Spiegelmotorausgang innerhalb von 1 s.
+ITEM-39,en,requirement,The ECU wakes up on a CAN message within 50 ms ± 5 ms.
+ITEM-40,de,information,Siehe auch die Schnittstellenspezifikation IS-0042 für die Signalliste.
+ITEM-41,de,information,Hintergrund: Das Gateway leitet alle Türsignale an das Karosseriesteuergerät weiter.
+ITEM-42,de,information,Offener Punkt: Der Lieferant hat den Steckertyp noch nicht bestätigt.
+ITEM-43,de,requirement,Das Gehäuse erfüllt die Schutzart IP54.
+ITEM-44,de,information,Beispiel: ein Spannungseinbruch auf 8 V beim Motorstart.
+ITEM-45,de,information,Die folgende Abbildung zeigt die Verkabelung des Türmoduls.
+ITEM-46,en,information,The values in this table are taken from the previous vehicle generation.
+ITEM-47,en,information,See also the interface specification IS-0042 for the signal list.
+ITEM-48,de,information,Türsteuergerät – Funktionsübersicht
+ITEM-49,de,requirement,Alle Diagnosedienste stehen über UDS auf dem CAN-Bus zur Verfügung.
+ITEM-50,de,requirement,Das Steuergerät stoppt den Fensterheber innerhalb von 200 ms ± 20 ms nach Auslösen des Einklemmschutzes.
+ITEM-51,de,information,3.1 Spannungsversorgung
+ITEM-52,de,requirement,Betriebstemperatur: −40 °C bis +85 °C.
+ITEM-53,en,information,Scope of delivery
+ITEM-54,en,information,Rationale: Customers reported that the window closes too slowly in winter.
+ITEM-55,en,requirement,All diagnostic services are available via UDS on the CAN bus.
+ITEM-56,en,requirement,The housing meets protection class IP54.
+ITEM-57,en,information,The following figure shows the wiring of the door module.
+ITEM-58,en,information,Note: The window position is provided by the Hall sensor in the window lifter motor.
+ITEM-59,en,information,Open point: the supplier has not yet confirmed the connector type.
+ITEM-60,en,requirement,The door lock actuator is controlled with a PWM signal of 1 kHz ± 50 Hz.
+ITEM-61,de,requirement,"Das Fenster schließt bei 12 V innerhalb von 4 s ± 0,5 s vollständig."
+ITEM-62,en,information,This chapter describes the requirements for the driver door control unit.
+ITEM-63,de,information,Hinweis: Die Fensterposition wird vom Hall-Sensor im Fensterhebermotor geliefert.
+ITEM-64,de,information,Abkürzungen und Begriffe
+ITEM-65,en,information,Background: the gateway forwards all door signals to the body controller.
+ITEM-66,en,information,Example: a voltage drop to 8 V during cranking.
+ITEM-67,en,information,ECU: Electronic Control Unit
+ITEM-68,de,information,Lieferumfang
+ITEM-69,en,requirement,Supply voltage range: 9 V to 16 V.
+ITEM-70,de,information,SG: Steuergerät

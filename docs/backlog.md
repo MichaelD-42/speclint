@@ -37,6 +37,12 @@
 
 - Eval harness: labeled EN/DE automotive-style items, precision/recall per rule and per profile. Prerequisite for tuning rules and profiles.
 - Classifier test: on labeled requirement/information items, compare GLiClass vs the plain rule "no obligation verb → information" vs Haiku. If GLiClass adds nothing over the baseline, drop it (and the 1.5 GB extra) and use Haiku only.
+  - First run (2026-11-07, `bench/classify_eval.py`, 70 EN/DE items without obligation verbs, 36 information; written by Claude, IDs neutral, order shuffled). On requirement recall, "requirements" means requirements written without a modal verb:
+    - baseline: 51% accuracy, requirement recall 0%.
+    - GLiClass: 50% accuracy, requirement recall 6% (2 of 34), 15 items/s.
+    - Haiku: 97% accuracy, information precision 100% and recall 94%, requirement recall 100%. Its only misses are "the door module is mounted inside the door trim" (EN and DE), arguably a requirement.
+  - Verdict so far: GLiClass adds nothing over the baseline; Haiku is far better. Caveat: the same author wrote the items, the labels and Haiku's prompt (bench/classify_eval_prompt.md), so the 97% is optimistic. Rerun on the real work items before deleting GLiClass.
+  - Running GLiClass here needs `HF_HOME` on a writable path; the sandbox blocks ~/.cache.
 - Timing benchmarks per stage (read, rules, whole-spec rules, classify, review) at 100 / 1k / 10k items. Done (feat/readers): `uv run python bench/timing.py [profile] [sizes…]`. Under `system` on 2026-11-07, in seconds, at 100 / 1k / 10k items:
   - read: 0.00 / 0.00 / 0.04
   - per-item rules: 0.09 / 0.93 / 6.56 (about 1,100–1,500 items/s)
