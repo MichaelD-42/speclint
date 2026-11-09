@@ -11,6 +11,8 @@ The batch file has `requirements`, each with `key`, `id`, `lang` (`en` or `de`),
 
 Findings from whole-spec rules (`duplicate`, `undefined-acronym`, `decimal-format`, `unit-system`) also carry `related`: the other requirements involved, with `id` and `text`. Judge them against those texts. Dismiss a `duplicate` when the two requirements differ in a way that matters (another signal, value or condition), and an `undefined-acronym` when the acronym is a standard name in the domain that needs no expansion.
 
+Dismiss an `undefined-acronym` when an engineer in the spec's domain (its product, electrics and electronics, testing, quality or standards) knows it without expansion, or when one of the `related` texts defines it. Confirm customer-internal codes that a supplier cannot know: variant codes and the names of the customer's own tools, documents, processes or organisation. When unsure, confirm.
+
 An `ears-nonconforming` finding means the item doesn't follow an EARS template; its `message` says why. Confirm it unless the item is not a requirement at all. The rewrite should then use the matching EARS pattern (While/When/If…then/Where … the <system> shall …; German: Solange/Wenn/Falls…dann/Sofern …, muss das <System> …).
 
 ## For each finding: confirmed or dismissed
@@ -22,6 +24,8 @@ Confirm when the matched text really makes the requirement vague, non-binding, o
 - `passive-no-actor` where the actor is irrelevant or obvious (a stored value, a displayed message) and responsibility is not in question.
 - `missing-tolerance` on a value that is an identifier, a standard number or a reference, not a requirement value.
 - `open-ended` where "such as / z. B." only illustrates and the set itself is fully specified elsewhere in the sentence.
+
+The spec is the customer's, and the supplier reads it to quote, not to rewrite it. So confirm a `passive-no-actor` only when the hidden actor could be either the customer or the supplier and the answer changes the supplier's scope or cost: who performs or pays for a test, who documents, delivers, sends, approves or agrees something. Dismiss it when the actor is plainly the product, the supplier's design or the test set-up ("shall be designed", "is allowed", "shall be measured at 23 °C"). When unsure, confirm.
 
 When unsure, confirm. Give a reason of at most 15 words.
 
