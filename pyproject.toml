@@ -1,6 +1,6 @@
 [project]
 name = "speclint"
-version = "0.2.0"
+version = "0.3.0"
 description = "Linter for requirements and user stories (English and German), inspired by the INCOSE GtWR rules"
 requires-python = ">=3.12"
 license = "MIT"

@@ -1,6 +1,6 @@
 {
   "name": "speclint",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Lint requirements and user stories (English/German), review findings with Haiku subagents and write graded results as JSON",
   "author": {
     "name": "Michael Dold"
