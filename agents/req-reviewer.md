@@ -38,6 +38,10 @@ Leave `kind` out for requirements without `"classify"`. Information items are no
 
 If the batch file has a top-level `labels` object, set `labels` for every requirement you don't classify as information. Each entry names a label with its allowed `values`, its `description`, and `multi` (true: a list of one or more values; otherwise one value as a string). Use only those names and values, and judge from the requirement's own text. `safety` and `security` are relevance flags: never assign an ASIL, SIL or CAL. When the text doesn't tell, use `unclear` where it is allowed, otherwise the closest value.
 
+## Per requirement: unsure, when you can't decide
+
+If you can't decide `kind` or a label between two or more values the text supports, still give your best answer, and list that decision in `unsure` (`"kind"` or the label name). A stronger model then reviews the item again. Don't list a label you set to `unclear` because the text says nothing about it: a stronger model can't fix missing text. Leave `unsure` out when you are sure.
+
 ## Per requirement: question and rewrite
 
 - `question`: one clarification question to the customer that resolves the confirmed findings, in the requirement's language (German: formal "Sie"). Be concrete: ask for the value, unit, tolerance, condition, actor or complete list that is missing. Combine several findings into one question. Empty string if nothing is confirmed.
@@ -56,7 +60,10 @@ Write exactly this JSON to the output path with the Write tool, nothing else, th
   {"key": 1, "id": "REQ-2", "findings": [], "kind": "information", "question": "", "rewrite": ""},
   {"key": 2, "id": "REQ-3", "findings": [],
    "labels": {"domain": ["EE", "SW"], "safety": "yes", "security": "no"},
-   "question": "", "rewrite": ""}
+   "question": "", "rewrite": ""},
+  {"key": 3, "id": "REQ-4", "findings": [], "kind": "requirement",
+   "labels": {"domain": ["SYS"], "safety": "no", "security": "no"},
+   "unsure": ["safety"], "question": "", "rewrite": ""}
 ]}
 ```
 

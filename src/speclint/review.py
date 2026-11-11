@@ -11,22 +11,30 @@ KINDS = {"requirement", "information"}
 
 
 def needs_kind(r: dict) -> bool:
-    """Neither an obligation verb nor the input file decided whether the item is a requirement: Haiku does."""
+    """Neither an obligation verb nor the input file decided whether the item is a requirement: a reviewer does."""
     cls = r.get("classification")
-    undecided = (
-        cls is None or cls.get("model") == "haiku"
-    )  # Haiku's own label may be revised
+    undecided = cls is None or cls.get("model") not in (
+        "input",
+        "obligation verb",
+    )  # a reviewer's own label may be revised
     return undecided and not OBLIGATION.search(r["text"])
 
 
-def batches(doc: dict, out_dir: Path, size: int = 25) -> list[Path]:
+def batches(
+    doc: dict, out_dir: Path, size: int = 25, unsure: bool = False
+) -> list[Path]:
+    """With unsure, only the items a reviewer was unsure about, for a stronger model to review again."""
     # key = position in the document: IDs repeat across files (e.g. DOORS absolute numbers per module)
     labels = doc.get("profile", {}).get("labels", [])
     todo = [  # with labels on, every requirement needs a review
         (key, r)
         for key, r in enumerate(doc["requirements"])
-        if (r["findings"] or needs_kind(r) or labels)
-        and r.get("classification", {}).get("kind") != "information"
+        if (
+            r.get("review", {}).get("unsure")
+            if unsure
+            else (r["findings"] or needs_kind(r) or labels)
+            and r.get("classification", {}).get("kind") != "information"
+        )
     ]
     out_dir.mkdir(parents=True, exist_ok=True)
     for old in out_dir.glob(
@@ -90,7 +98,9 @@ def batches(doc: dict, out_dir: Path, size: int = 25) -> list[Path]:
     return paths
 
 
-def merge(doc: dict, review_files: list[Path]) -> tuple[dict, list[str]]:
+def merge(
+    doc: dict, review_files: list[Path], model: str = "haiku"
+) -> tuple[dict, list[str]]:
     """Apply reviews. Model-written input: anything malformed is skipped and reported, never trusted."""
     reqs = doc["requirements"]
     problems = []
@@ -128,8 +138,21 @@ def merge(doc: dict, review_files: list[Path]) -> tuple[dict, list[str]]:
                 req["findings"][i]["dismissed"] = v["verdict"] == "dismissed"
                 req["findings"][i]["review_reason"] = str(v.get("reason") or "")
             req["review"] = {
-                k: str(rv[k]) for k in ("question", "rewrite") if rv.get(k)
+                "model": model,
+                **{k: str(rv[k]) for k in ("question", "rewrite") if rv.get(k)},
             }
+            unsure = rv.get("unsure") or []
+            if not isinstance(unsure, list):
+                problems.append(f"{path}: {req['id']}: unsure is not a list")
+                unsure = []
+            allowed = ["kind", *doc.get("profile", {}).get("labels", [])]
+            problems += [
+                f"{path}: {req['id']}: unsure {u!r} is not kind or a requested label"
+                for u in unsure
+                if u not in allowed
+            ]
+            if valid_unsure := [u for u in allowed if u in unsure]:
+                req["review"]["unsure"] = valid_unsure
             if "kind" in rv:
                 if rv["kind"] not in KINDS:
                     problems.append(f"{path}: {req['id']}: invalid kind {rv['kind']!r}")
@@ -139,7 +162,7 @@ def merge(doc: dict, review_files: list[Path]) -> tuple[dict, list[str]]:
                         f"{path}: {req['id']}: kind ignored, already decided"
                     )
                 else:
-                    req["classification"] = {"model": "haiku", "kind": rv["kind"]}
+                    req["classification"] = {"model": model, "kind": rv["kind"]}
             if "labels" in rv:
                 valid, bad = _labels(
                     rv["labels"], doc.get("profile", {}).get("labels", [])
@@ -179,8 +202,10 @@ def _labels(given, requested: list[str]) -> tuple[dict, list[str]]:
     return valid, bad
 
 
-def main_merge(results: Path, review_files: list[Path]) -> int:
-    doc, problems = merge(json.loads(results.read_text(encoding="utf-8")), review_files)
+def main_merge(results: Path, review_files: list[Path], model: str = "haiku") -> int:
+    doc, problems = merge(
+        json.loads(results.read_text(encoding="utf-8")), review_files, model
+    )
     results.write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
     for p in problems:
         print(f"warning: {p}", file=sys.stderr)
@@ -201,4 +226,6 @@ def main_merge(results: Path, review_files: list[Path]) -> int:
     if n := s.get("safety_without_level"):
         noun = "items state" if n > 1 else "item states"
         print(f"{n} safety-relevant {noun} no ASIL/SIL.")
+    if n := sum(1 for r in doc["requirements"] if r.get("review", {}).get("unsure")):
+        print(f"{model} was unsure about {n} items.")
     return 0

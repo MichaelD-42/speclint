@@ -185,3 +185,93 @@ def test_merge_cli_prints_label_counts_and_safety_gap(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "domain SW:1" in out and "safety yes:1" in out
     assert "1 safety-relevant item states no ASIL/SIL" in out
+
+
+def test_merge_records_unsure_decisions_and_the_reviewer_model(tmp_path):
+    d = doc()
+    f = review(
+        tmp_path,
+        [
+            {
+                "key": 0,
+                "id": "R-0",
+                "findings": [],
+                "labels": {"safety": "no"},
+                "unsure": ["safety", "colour"],
+            },
+            {
+                "key": 2,
+                "id": "R-2",
+                "findings": [],
+                "kind": "information",
+                "unsure": ["kind"],
+            },
+        ],
+    )
+    d, problems = merge(d, [f])
+    r0, _, r2 = d["requirements"]
+    assert r0["review"] == {"model": "haiku", "unsure": ["safety"]}
+    assert r2["review"]["unsure"] == ["kind"]
+    assert problems == [f"{f}: R-0: unsure 'colour' is not kind or a requested label"]
+    validate(d)
+
+
+def test_unsure_batches_hold_only_unsure_items_even_information(tmp_path):
+    d = doc()
+    f = review(
+        tmp_path,
+        [
+            {"key": 0, "id": "R-0", "findings": [], "labels": {"safety": "no"}},
+            {
+                "key": 2,
+                "id": "R-2",
+                "findings": [],
+                "kind": "information",
+                "unsure": ["kind"],
+            },
+        ],
+    )
+    d, _ = merge(d, [f])
+    (path,) = batches(d, tmp_path / "esc", unsure=True)
+    (item,) = json.loads(path.read_text())["requirements"]
+    assert item["id"] == "R-2" and item["classify"] is True
+    assert batches(merge(doc(), [])[0], tmp_path / "none", unsure=True) == []
+
+
+def test_escalated_review_replaces_the_first_one(tmp_path):
+    d = doc()
+    first = review(
+        tmp_path,
+        [
+            {
+                "key": 2,
+                "id": "R-2",
+                "findings": [],
+                "kind": "information",
+                "unsure": ["kind"],
+            }
+        ],
+    )
+    d, _ = merge(d, [first])
+    second = tmp_path / "s.review.json"
+    second.write_text(
+        json.dumps(
+            {
+                "reviews": [
+                    {
+                        "key": 2,
+                        "id": "R-2",
+                        "findings": [],
+                        "kind": "requirement",
+                        "labels": {"safety": "no"},
+                    }
+                ]
+            }
+        )
+    )
+    d, problems = merge(d, [second], model="sonnet")
+    r2 = d["requirements"][2]
+    assert problems == []
+    assert r2["classification"] == {"model": "sonnet", "kind": "requirement"}
+    assert r2["review"] == {"model": "sonnet"} and r2["labels"] == {"safety": "no"}
+    validate(d)

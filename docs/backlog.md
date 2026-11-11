@@ -40,8 +40,10 @@
   - First run (2026-11-07, `bench/classify_eval.py`, 70 EN/DE items without obligation verbs, 36 information; written by Claude, IDs neutral, order shuffled). On requirement recall, "requirements" means requirements written without a modal verb:
     - baseline: 51% accuracy, requirement recall 0%.
     - GLiClass: 50% accuracy, requirement recall 6% (2 of 34), 15 items/s.
+    - strands-decider 2B (Qwen3.5, local RTX 4070 Ti SUPER, 2026-11-11): 87% accuracy, information P 97% R 78%, requirement R 97%, 38 items/s. 8 of its 9 misses are headings, chapter intros, notes and examples called requirements.
     - Haiku: 97% accuracy, information precision 100% and recall 94%, requirement recall 100%. Its only misses are "the door module is mounted inside the door trim" (EN and DE), arguably a requirement.
   - Verdict so far: GLiClass adds nothing over the baseline; Haiku is far better. Caveat: the same author wrote the items, the labels and Haiku's prompt (bench/classify_eval_prompt.md), so the 97% is optimistic. Rerun on the real work items before deleting GLiClass.
+  - Decision (2026-11-11, Michael): strands-decider is not adopted for labels, kind or false-positive findings; Haiku stays. Haiku now lists decisions it can't make in `unsure`, and `batches --unsure` / `merge --model sonnet` re-review those items with Sonnet. No further escalation: what Sonnet is still unsure about goes to the user. Domain stays ME/EE/SW/SYS (V&V are activities, covered by the verification label). Type `constraint` split into `design constraint` and `other constraint`. Safety, domain and finding-dismissal accuracy, and how often Haiku escalates, are still unmeasured: they need the work data.
   - Decision (2026-11-07, Michael): drop the local model and use Haiku only. Done (feat/readers): `--classify`, `classify.py`, the `classify` extra (torch, gliclass) and `bench/classify_promise.py` are removed.
   - How it works now: an obligation verb, or the input file's kind, decides first, in every run. `batches` marks every other item `"classify": true`, including items without findings. The req-reviewer returns `kind`, and `merge` records `{"model": "haiku", "kind": …}`. A Haiku kind on an item already decided is rejected and reported. Rerun bench/classify_eval.py on the real items next week.
 - Timing benchmarks per stage (read, rules, whole-spec rules, classify, review) at 100 / 1k / 10k items. Done (feat/readers): `uv run python bench/timing.py [profile] [sizes…]`. Under `system` on 2026-11-07, in seconds, at 100 / 1k / 10k items:
@@ -104,7 +106,7 @@ Labels only; they never change scores.
 - Domain, multi-label: ME, EE, SW, SYS.
 - Safety relevance: yes / no / unclear. Pick up an ASIL/SIL the text states; flag safety-relevant items with none stated. Never assign one (it comes from the HARA, not the text).
 - Cybersecurity relevance: yes / no / unclear (CAL comes from the TARA, not the text).
-- Requirement type: functional, performance, interface, constraint, safety, security.
+- Requirement type: functional, performance, interface, design constraint, other constraint, safety, security.
 - Level: stakeholder / system / component (R3).
 - Solution-free (R31).
 - Verification method: test, analysis, inspection, demonstration, or not verifiable.

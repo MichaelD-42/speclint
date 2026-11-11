@@ -112,7 +112,7 @@ Anything else gets an `ears-nonconforming` warning naming the problem: no "shall
 Two stages run in this order; only the first always runs.
 
 1. **Rules** (`speclint check`) produce every finding and every grade.
-2. **Reviewers** (`batches` → `speclint:req-reviewer` → `merge`, optional): Haiku subagents confirm or dismiss each finding and draft a question and a rewrite. Dismissed findings stop counting and the item is regraded.
+2. **Reviewers** (`batches` → `speclint:req-reviewer` → `merge`, optional): Haiku subagents confirm or dismiss each finding and draft a question and a rewrite. Dismissed findings stop counting and the item is regraded. Items where Haiku is unsure about the requirement/information call or a label go to Sonnet once (`batches --unsure`, `merge --model sonnet`); what Sonnet is still unsure about is left for you.
 
 Information items (headings, notes, explanations) are not graded or reviewed. What counts as information is decided in this order:
 
@@ -129,7 +129,7 @@ During the review, the Haiku reviewer also labels each requirement. Labels descr
 | domain | ME, EE, SW, SYS (one or more) | ✓ | ✓ |
 | safety | yes / no / unclear: functional-safety relevant | ✓ | ✓ |
 | security | yes / no / unclear: cybersecurity relevant | ✓ | ✓ |
-| type | functional, performance, interface, constraint, safety, security | | ✓ |
+| type | functional, performance, interface, design constraint, other constraint, safety, security | | ✓ |
 | level | stakeholder, system, component | | ✓ |
 | verification | test, analysis, inspection, demonstration, not verifiable | | ✓ |
 | solution | free / prescribed (INCOSE R31) | | ✓ |
@@ -160,7 +160,7 @@ It reads ReqIF and ReqIFz in document order (the SPEC-HIERARCHY), with headings 
 
 ## Benchmarks
 
-On PROMISE_exp (969 English requirements), the rules run at about 950 requirements/s: `uv run python bench/promise.py` prints the hits per rule and random samples to check precision by hand, because PROMISE has no quality labels. Requirement vs information for items without an obligation verb is measured by `bench/classify_eval.py` on 70 EN/DE items. A Haiku subagent scores 97% there, against 51% for the plain rule "no obligation verb → information". A local zero-shot model (GLiClass) was tried and dropped: it scored 50% on this task, and 38% on PROMISE's 12 type classes. `uv run python bench/timing.py` times each stage (read, rules, whole-spec rules, report, batches and merge) at 100, 1,000 and 10,000 items. The rules run at about 1,100 items/s under `system`.
+On PROMISE_exp (969 English requirements), the rules run at about 950 requirements/s: `uv run python bench/promise.py` prints the hits per rule and random samples to check precision by hand, because PROMISE has no quality labels. Requirement vs information for items without an obligation verb is measured by `bench/classify_eval.py` on 70 EN/DE items. A Haiku subagent scores 97% there, against 51% for the plain rule "no obligation verb → information". A local zero-shot model (GLiClass) was tried and dropped: it scored 50% on this task, and 38% on PROMISE's 12 type classes. A local strands-decider 2B classifier (`--decider`) scored 87% at 38 items/s on an RTX 4070 Ti SUPER; most of its misses were headings, chapter introductions and notes it called requirements. Haiku stays, with escalation to Sonnet for the items it is unsure about. `uv run python bench/timing.py` times each stage (read, rules, whole-spec rules, report, batches and merge) at 100, 1,000 and 10,000 items. The rules run at about 1,100 items/s under `system`.
 
 ## Development
 

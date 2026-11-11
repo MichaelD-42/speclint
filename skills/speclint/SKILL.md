@@ -56,7 +56,21 @@ The first run creates the environment (spaCy plus two small language models, abo
 
    Report any `warning:` lines from merge; they mean a reviewer wrote malformed output for those items. Running `batches` again deletes the previous batch and review files in that folder.
 
-4. **Answer the user** in a few lines: how many of the graded items need clarification, the label counts (domain, safety, security) and how many safety-relevant items state no ASIL/SIL when a review ran, the grade distribution, the category with the most findings, the three most frequent rules, the five worst requirement IDs with their main problem, how many clarification questions were drafted, which stages ran, and the path of `results.json`. Do not paste the full findings list; it is in the JSON. If the user wants the clarification questions as text, read them from `requirements[].review.question` in `results.json`.
+   **Escalate.** If merge prints "haiku was unsure about N items", review those items again with Sonnet:
+
+   ```bash
+   speclint batches speclint-out/results.json --unsure --out speclint-out/review-sonnet
+   ```
+
+   Launch `speclint:req-reviewer` for each printed batch as above, but with the model set to `sonnet`. Then merge with `--model sonnet`; Sonnet's review replaces Haiku's for those items:
+
+   ```bash
+   speclint merge --model sonnet speclint-out/results.json speclint-out/review-sonnet/*.review.json
+   ```
+
+   Don't escalate further. Items Sonnet is still unsure about (`review.unsure` in `results.json`) go to the user as open classification questions.
+
+4. **Answer the user** in a few lines: how many of the graded items need clarification, the label counts (domain, safety, security) and how many safety-relevant items state no ASIL/SIL when a review ran, the grade distribution, the category with the most findings, the three most frequent rules, the five worst requirement IDs with their main problem, how many clarification questions were drafted, how many items were escalated to Sonnet and which ones it was still unsure about, which stages ran, and the path of `results.json`. Do not paste the full findings list; it is in the JSON. If the user wants the clarification questions as text, read them from `requirements[].review.question` in `results.json`.
 
 ## Notes
 
