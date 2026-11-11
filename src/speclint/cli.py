@@ -84,6 +84,11 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("results", type=Path)
     b.add_argument("--out", type=Path, required=True)
     b.add_argument("--size", type=int, default=25)
+    b.add_argument(
+        "--unsure",
+        action="store_true",
+        help="only the items the last reviewer was unsure about, to escalate",
+    )
 
     m = sub.add_parser(
         "merge",
@@ -91,18 +96,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     m.add_argument("results", type=Path)
     m.add_argument("reviews", nargs="+", type=Path)
+    m.add_argument(
+        "--model", default="haiku", help="model that wrote these reviews (recorded)"
+    )
 
     a = p.parse_args(argv)
     if a.cmd == "batches":
         if a.size < 1:
             p.error("--size must be at least 1")
         paths = batches(
-            json.loads(a.results.read_text(encoding="utf-8")), a.out, a.size
+            json.loads(a.results.read_text(encoding="utf-8")), a.out, a.size, a.unsure
         )
         print("\n".join(map(str, paths)) or "No findings to review.")
         return 0
     if a.cmd == "merge":
-        return main_merge(a.results, a.reviews)
+        return main_merge(a.results, a.reviews, a.model)
 
     try:
         profile = load_profile(a.profile, a.ears)

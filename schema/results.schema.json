@@ -114,7 +114,7 @@
           "properties": { "pattern": { "$ref": "#/$defs/earsPattern" } }
         },
         "classification": {
-          "description": "Requirement or information, when decided: model \"input\" (object type or heading in the input file), \"obligation verb\" (an obligation verb overrides an input \"information\"), or \"haiku\" (set by `speclint merge` for items neither decided).",
+          "description": "Requirement or information, when decided: model \"input\" (object type or heading in the input file), \"obligation verb\" (an obligation verb overrides an input \"information\"), or the reviewer model, e.g. \"haiku\" or \"sonnet\" (set by `speclint merge` for items neither decided).",
           "type": "object",
           "required": ["model", "kind"],
           "additionalProperties": false,
@@ -129,6 +129,8 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "model": { "type": "string", "description": "Model that wrote this review (`merge --model`, default haiku)." },
+            "unsure": { "type": "array", "items": { "type": "string" }, "description": "Classification decisions (\"kind\" or label names) the reviewer was unsure about; `batches --unsure` sends these items to a stronger model." },
             "question": { "type": "string", "description": "Clarification question for the customer, in the item's language." },
             "rewrite": { "type": "string", "description": "Suggested text; unknown values appear as [TBD: ...] placeholders." }
           }

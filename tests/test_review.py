@@ -75,7 +75,7 @@ def test_merge_dismisses_rescores_and_rejects_garbage(tmp_path):
     a, b = d["requirements"][0], d["requirements"][1]
     assert a["grade"] == "none" and a["findings"][0]["dismissed"]
     assert (
-        b["review"] == {"question": "Which max. response time?"}
+        b["review"] == {"model": "haiku", "question": "Which max. response time?"}
         and b["findings"][0]["dismissed"] is False
     )
     assert d["summary"]["dismissed"] == 1
@@ -162,7 +162,10 @@ def test_duplicate_ids_get_their_own_review(tmp_path):
     d, problems = merge(d, [review])
     a, b = d["requirements"]
     assert problems == []
-    assert a["review"] == {"question": "Q for modA"} and a["findings"][0]["dismissed"]
+    assert (
+        a["review"] == {"model": "haiku", "question": "Q for modA"}
+        and a["findings"][0]["dismissed"]
+    )
     assert "review" not in b and "dismissed" not in b["findings"][0]
 
 

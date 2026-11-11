@@ -264,8 +264,8 @@ values = ["yes", "no", "unclear"]
 description = "Cybersecurity relevant (ISO/SAE 21434): access control, authentication, encryption, diagnostics or update access, external interfaces, protection against manipulation. Judge relevance only; never assign a CAL."
 
 [labels.type]
-values = ["functional", "performance", "interface", "constraint", "safety", "security"]
-description = "Main kind of requirement: functional (a behaviour), performance (how fast, how much, how precise), interface (signals, protocols, connectors), constraint (design, environment, standards, process, delivery), safety, security."
+values = ["functional", "performance", "interface", "design constraint", "other constraint", "safety", "security"]
+description = "Main kind of requirement: functional (a behaviour), performance (how fast, how much, how precise), interface (signals, protocols, connectors), design constraint (prescribes a technology, material, component, dimension or design), other constraint (environment, standards, process, delivery), safety, security."
 
 [labels.level]
 values = ["stakeholder", "system", "component"]
